@@ -3,6 +3,7 @@ import gpiozero
 import time
 
 # You can replace the pin with whichever pin you are using to drive the PWM input to the motor driver
+# PIN NUMBER IS GPIO PIN NUMBER, NOT PHYSICAL PIN NUMBER ON BOARD
 pwm = gpiozero.PWMOutputDevice(pin=12,active_high=True,initial_value=0,frequency=50000)
 
 for j in range(10):
