@@ -50,7 +50,9 @@ class Robot:
 
         v, w = self.base_velocity(self.wl,self.wr) # get the base velocity from wheel rotations
 
-        self.x = self.x + dt*v*
+        self.x = self.x + dt*v*np.cos(self.th)
+        self.y = self.y + dt*v*np.sin(self.th)
+        self.th = self.th + w*dt
 
         self.previous_time = time.time()
 
