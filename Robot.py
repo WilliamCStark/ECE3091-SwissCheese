@@ -43,7 +43,7 @@ class Robot:
         self.motor_drive(motor_l, duty_cycle_l, dir_l) # drive right motor
 
         self.wl = self.get_encoder_angular_vel(self.encoder_l, dt) # get right motor angular vel
-        self.wr = self.get_encoder_angular_vel(self.encoder_r, dt) #get left motor angular vel
+        self.wr = self.get_encoder_angular_vel(self.encoder_r, dt) # get left motor angular vel
 
         v, w = self.base_velocity(self.wl,self.wr) # get the base velocity from wheel rotations
 
@@ -52,6 +52,10 @@ class Robot:
         self.th = self.th + w*dt
 
         self.previous_time = time.time()
+
+    # based on the
+    def drive_to_point(self, dest_x, dest_y):
+        pass
 
 class Motor:
     def __init__(self, pwm_output, direction_output):
