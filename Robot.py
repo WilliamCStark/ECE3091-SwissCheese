@@ -22,6 +22,9 @@ class Robot:
         self.previous_time = time.time()
         self.previous_steps = 0
 
+        self.e_sum_l = 0
+        self.e_sum_r = 0
+
         # handling the registering of tasks
         # registered movement tasks go into the queue. these are base tasks like moving a distance, or rotating by an angle, and can be composited to achieve any complicated task with the robot
         self.tasks_queue = list()
@@ -36,6 +39,7 @@ class Robot:
         motor.DIR = dir
 
     def get_encoder_angular_vel(self, encoder, dt):
+        # might need to change to accomodate gear ratio
         delta_steps = encoder.steps - self.previous_steps
         self.previous_steps = encoder.StepsToDistance
         return delta_steps/dt
@@ -46,7 +50,9 @@ class Robot:
         w = (wl - wr)/self.l
         return v, w
 
-    def drive_robot(self, duty_cycle_l, duty_cycle_r, dir_l, dir_r):
+    # At the end of a given time step, update the 'pose', essentially update the
+    # internally stored position of the robot.
+    def pose_update(self, duty_cycle_l, duty_cycle_r, dir_l, dir_r):
         dt = time.time() - self.previous_time
         self.motor_drive(motor_l, duty_cycle_l, dir_l) # drive left motor
         self.motor_drive(motor_l, duty_cycle_l, dir_l) # drive right motor
@@ -63,17 +69,39 @@ class Robot:
         self.previous_time = time.time()
 
     ################################################################################
-    ### Below are the basic drive functions that move the robot in one of it's two
-    ### degrees of freedom, either forward motion or rotation. at this level collision
-    ### is not considered, as such it is not recommended to use this function directly
+    ### Below is the basic drive function. We specify a desired velocity and speed of
+    ### rotation.
     ################################################################################
+
+    def drive(self, v_desired, w_desired):
+        wl_desired = v_desired/self.wheel_radius + self.wheel_sep*w_desired/2
+        wr_desired = v_desired/self.wheel_radius - self.wheel_sep*w_desired/2
+
+        duty_cycle_l,self.e_sum_l = self.p_control(wl_desired,self.wl,self.e_sum_l)
+        duty_cycle_r,self.e_sum_r = self.p_control(wr_desired,self.wr,self.e_sum_r)
+
+        pose_update(abs(duty_cycle_l), abs(duty_cycle_r), -(abs(duty_cycle_l)/duty_cycle_l-1)/2,-(abs(duty_cycle_r)/duty_cycle_r-1)/2)
+
+    # utility function for the drive function, calculates required duty cycle for
+    # a desired step velocity and minimizes accumulated error.
+    def p_control(self,w_desired,w_measured,e_sum):
+        kp = 0.1
+        ki = 0.01
+
+        duty_cycle = min(max(-1,kp*(w_desired-w_measured) + ki*e_sum),1)
+
+        e_sum = e_sum + (w_desired-w_measured)
+
+        return duty_cycle, e_sum
 
     # drive_forward(self, min_duty_cycle):
     # Definition: function should drive the robot forward, at a target duty cycle indicated target_duty_cycle
     # will have to provided duty_cycles to each l and r in order to get the robot moving in a straight line
     # may need to take in rotational speed of motor to calculate the duty cycle
-    def drive_forward(self, min_duty_cycle):
-        pass
+    def drive_forward(self, min_duty_cycle=1):
+        # For the time being, let's just assume both motors are exactly identical. testing will be needed to
+        # determine actual motor parameters
+        #drive_robot(min_duty_cycle, min_duty_cycle)
 
     # drive_rotate(self, target_duty_cycle, direction):
     # Definition: will rotate the robot in a specified direction. robot should rotate on the StepsToDistance
