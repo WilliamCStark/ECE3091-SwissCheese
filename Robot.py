@@ -53,7 +53,30 @@ class Robot:
 
         self.previous_time = time.time()
 
-    # based on the
+    # function should drive the robot forward, at a minumum duty cycle indicated min_duty_cycle
+    # will have to provided duty_cycles to each l and r in order to get the robot moving in a straight line
+    # may need to take in rotational speed of motor to calculate the duty cycle
+    def drive_forward(self, min_duty_cycle):
+        pass
+    # will drive the robot forward in a straight line for the specified amount of time
+    def drive_forward_for_time(self, time, min_duty_cycle=1):
+        pass
+    # will drive the robot forward in a straight line for the specified distance
+    def drive_forward_for_distance(self, distance, min_duty_cycle=1):
+        pass
+    # will rotate the robot in a specified direction
+    def drive_rotate(self, min_duty_cycle, direction):
+        pass
+    # will rotate the robot in the specified direction for an amount of time
+    def drive_rotate_for_time(self, time, direction, min_duty_cycle=1):
+        pass
+    # will rotate the robot by the specified angle
+    def drive_rotate_for_angle(self, angle, min_duty_cycle=1):
+        pass
+    # will rotate the robot to a specified global angle
+    def drive_rotate_to_angle(self, angle, min_duty_cycle=1):
+        pass
+    # will drive the robot to the destination location, in a straight line
     def drive_to_point(self, dest_x, dest_y):
         pass
 
