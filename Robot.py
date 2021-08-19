@@ -26,13 +26,11 @@ class Robot:
         self.e_sum_r = 0
 
         # handling the registering of tasks
-        # registered movement tasks go into the queue. these are base tasks like moving a distance, or rotating by an angle, and can be composited to achieve any complicated task with the robot
-        self.tasks_queue = list()
+        # registered movement tasks go into the queue. see the class definition for a task
+        self.tasks_queue = list() # an example entry (vel_func, w_func, target_duration)
         # all tasks involve some quantity reaching some target, for example,
         # moving forward for 10 seconds. we must store the current elapsed quantity
-        # and target quantity to know when the task has been completed
         self.task_elapsed_quantity = 0
-        self.task_elapsed_target = 0
 
     def motor_drive(self, motor, duty_cycle, dir):
         motor.PWM.value = duty_cycle
@@ -94,31 +92,22 @@ class Robot:
 
         return duty_cycle, e_sum
 
-    # drive_forward(self, min_duty_cycle):
-    # Definition: function should drive the robot forward, at a target duty cycle indicated target_duty_cycle
-    # will have to provided duty_cycles to each l and r in order to get the robot moving in a straight line
-    # may need to take in rotational speed of motor to calculate the duty cycle
-    def drive_forward(self, min_duty_cycle=1):
-        # For the time being, let's just assume both motors are exactly identical. testing will be needed to
-        # determine actual motor parameters
-        #drive_robot(min_duty_cycle, min_duty_cycle)
-
-    # drive_rotate(self, target_duty_cycle, direction):
-    # Definition: will rotate the robot in a specified direction. robot should rotate on the StepsToDistance
-    # so may have to control the duty cycles of each to achieve this result. as such
-    # target_duty_cycle will be the target duty cycle, but small differences may be required
-    # due to differences in the duty cycle products of each motor.
-    def drive_rotate(self, target_duty_cycle, direction):
-        pass
-
+    # immediately arrest the motion of the robot
+    def stop(self):
+        self.motor_l.PWM.value = 0
+        self.motor_r.PWM.value = 0
     ###############################################################################################
     ### Below are base task registering functions. These attempt to complete some task until completion,
     ### or until the robot 'collides' with something.
     ################################################################################################
     # drive_forward_for_time(self, time, target_duty_cycle=1):
     # Defintion: will drive the robot forward in a straight line for the specified amount of time
-    def drive_forward_for_time(self, time, target_duty_cycle=1):
-        pass
+    def drive_forward_for_time(self, time, v_desired):
+        v_func = lambda t : v_desired
+        w_func = lambda t : 0
+        target = time
+        task = Task(v_func, w_func, target)
+        self.tasks_queue.append(task)
     # drive_forward_for_distance(self, distance, target_duty_cycle=1)
     # Defintion: will drive the robot forward in a straight line for the specified distance
     def drive_forward_for_distance(self, distance, target_duty_cycle=1):
@@ -141,10 +130,39 @@ class Robot:
         pass
 
     # update function used to drive the robot based on the tasks required of it
+    # updates the task state and checks for collisions
     def update(self):
-        pass
+        current_task = self.tasks_queue[0]
+        if CollisionTakenPlace:
+            self.tasks_queue = [] # possibility to add complexity to tasks. allow them to produce contingencies for collisions that take place
+            self.stop()
+        else:
+            current_task.UpdateTask(self)
+
 
 class Motor:
     def __init__(self, pwm_output, direction_output):
         self.PWM = pwm_output
         self.DIR = direction_output
+
+# A task consists of a time dependent velocity, and time dependent angular Veclocity
+# and a target for which the task will stop. The quant_aq_func is a function used
+# to get the value to be added to current on each iteration. This effectively allows
+# the user to specify a custom quantity. By default, the time elapsed between task
+# updates is used, but distance could easily be specified by passing through an
+# appropriate function
+class Task:
+    def __init__(self, v_func, w_func, target, quant_aq_func = lambda rob: time.time() - rob.previous_time):
+        self.v_func = vel_func
+        self.w_func = w_func
+        self.target = target
+        self.current = 0 # the current value of the task dependent quantity, set to 0 when the task is initialized
+        self.quant_aq_func = quant_aq_func
+
+    # Update the task by passing through the robot function, task can then use the custom function for calculating the change in the
+    # current quantity value
+    def UpdateTask(self, rob):
+        self.current += quant_aq_func(rob)
+
+    def IsTaskCompleted(self):
+        return self.current >= self.target
