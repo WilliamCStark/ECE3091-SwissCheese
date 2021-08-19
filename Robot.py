@@ -22,6 +22,15 @@ class Robot:
         self.previous_time = time.time()
         self.previous_steps = 0
 
+        # handling the registering of tasks
+        # registered movement tasks go into the queue. these are base tasks like moving a distance, or rotating by an angle, and can be composited to achieve any complicated task with the robot
+        self.tasks_queue = list()
+        # all tasks involve some quantity reaching some target, for example,
+        # moving forward for 10 seconds. we must store the current elapsed quantity
+        # and target quantity to know when the task has been completed
+        self.task_elapsed_quantity = 0
+        self.task_elapsed_target = 0
+
     def motor_drive(self, motor, duty_cycle, dir):
         motor.PWM.value = duty_cycle
         motor.DIR = dir
@@ -53,31 +62,58 @@ class Robot:
 
         self.previous_time = time.time()
 
-    # function should drive the robot forward, at a minumum duty cycle indicated min_duty_cycle
+    ################################################################################
+    ### Below are the basic drive functions that move the robot in one of it's two
+    ### degrees of freedom, either forward motion or rotation. at this level collision
+    ### is not considered, as such it is not recommended to use this function directly
+    ################################################################################
+
+    # drive_forward(self, min_duty_cycle):
+    # Definition: function should drive the robot forward, at a target duty cycle indicated target_duty_cycle
     # will have to provided duty_cycles to each l and r in order to get the robot moving in a straight line
     # may need to take in rotational speed of motor to calculate the duty cycle
     def drive_forward(self, min_duty_cycle):
         pass
-    # will drive the robot forward in a straight line for the specified amount of time
-    def drive_forward_for_time(self, time, min_duty_cycle=1):
+
+    # drive_rotate(self, target_duty_cycle, direction):
+    # Definition: will rotate the robot in a specified direction. robot should rotate on the StepsToDistance
+    # so may have to control the duty cycles of each to achieve this result. as such
+    # target_duty_cycle will be the target duty cycle, but small differences may be required
+    # due to differences in the duty cycle products of each motor.
+    def drive_rotate(self, target_duty_cycle, direction):
         pass
-    # will drive the robot forward in a straight line for the specified distance
-    def drive_forward_for_distance(self, distance, min_duty_cycle=1):
+
+    ###############################################################################################
+    ### Below are base task registering functions. These attempt to complete some task until completion,
+    ### or until the robot 'collides' with something.
+    ################################################################################################
+    # drive_forward_for_time(self, time, target_duty_cycle=1):
+    # Defintion: will drive the robot forward in a straight line for the specified amount of time
+    def drive_forward_for_time(self, time, target_duty_cycle=1):
         pass
-    # will rotate the robot in a specified direction
-    def drive_rotate(self, min_duty_cycle, direction):
+    # drive_forward_for_distance(self, distance, target_duty_cycle=1)
+    # Defintion: will drive the robot forward in a straight line for the specified distance
+    def drive_forward_for_distance(self, distance, target_duty_cycle=1):
         pass
-    # will rotate the robot in the specified direction for an amount of time
-    def drive_rotate_for_time(self, time, direction, min_duty_cycle=1):
+    # drive_rotate_for_time(self, time, direction, target_duty_cycle=1)
+    # Defintion: will rotate the robot in the specified direction for an amount of time
+    def drive_rotate_for_time(self, time, direction, target_duty_cycle=1):
         pass
-    # will rotate the robot by the specified angle
-    def drive_rotate_for_angle(self, angle, min_duty_cycle=1):
+    # drive_rotate_for_angle(self, angle, target_duty_cycle=1)
+    # Defintion: will rotate the robot by the specified angle
+    def drive_rotate_for_angle(self, angle, target_duty_cycle=1):
         pass
-    # will rotate the robot to a specified global angle
-    def drive_rotate_to_angle(self, angle, min_duty_cycle=1):
+    # drive_rotate_to_angle(self, angle, target_duty_cycle=1)
+    # Defintion: will rotate the robot to a specified global angle
+    def drive_rotate_to_angle(self, angle, target_duty_cycle=1):
         pass
-    # will drive the robot to the destination location, in a straight line
+    # drive_to_point(self, dest_x, dest_y)
+    # Defintion: will drive the robot to the destination location, in a straight line
     def drive_to_point(self, dest_x, dest_y):
+        pass
+
+    # update function used to drive the robot based on the tasks required of it
+    def update(self):
         pass
 
 class Motor:
