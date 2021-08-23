@@ -9,10 +9,5 @@ encoder_r = gpiozero.RotaryEncoder(a=23, b=24,max_steps=100000)  # using GPIO 23
 
 robot = Robot(3, 10, motor_l, motor_r, encoder_l, encoder_r)
 
-previous_time = time.time()
-update_interval = 100
-while True:
-    delta_t = time.time()-previous_time
-    if delta_t > update_interval:
-        robot.drive_robot(1.0,1.0,0,0)
-        previous_time = time.time()
+# Will drive forward for 1 second
+robot.drive_forward_for_time(self, 1000, v_desired)
