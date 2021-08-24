@@ -151,8 +151,9 @@ class Robot (BaseRobot):
 
 # A navigating robot can get to destination locations and navigate obstacles
 def NavigatingRobot(Robot):
-    def __init__(self, wheel_radius, wheel_sep, motor_l, motor_r, rotary_encoder_l, rotary_encoder_r):
+    def __init__(self, wheel_radius, wheel_sep, motor_l, motor_r, rotary_encoder_l, rotary_encoder_r, sensor):
         super().__init__(self, wheel_radius, wheel_sep, motor_l, motor_r, rotary_encoder_l, rotary_encoder_r)
+        self.sensor = sensor
 
 class Motor:
     def __init__(self, pwm_output, direction_output):
