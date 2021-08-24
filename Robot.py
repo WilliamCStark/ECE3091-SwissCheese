@@ -18,9 +18,10 @@ class BaseRobot:
         self.motor_r = motor_r # the PWM output device for the right motor
         self.encoder_l = rotary_encoder_l # the rotary encoder object for the left wheel
         self.encoder_r = rotary_encoder_l # the rotary encoder object for the left wheel
+        self.gear_ratio = 32 # 32 rotations of the motor = 1 rotation of the wheel
 
         self.previous_steps = 0
-        self.dt = 10 # the time to sleep after applying a motor movement
+        self.dt = 0.01 # the time to sleep after applying a motor movement
 
         self.e_sum_l = 0
         self.e_sum_r = 0
@@ -33,21 +34,22 @@ class BaseRobot:
     def get_encoder_angular_vel(self, encoder, dt):
         # might need to change to accomodate gear ratio
         delta_steps = encoder.steps - self.previous_steps
-        self.previous_steps = encoder.StepsToDistance
+        self.previous_steps = encoder.steps
+        delta_rots = delta_steps / self.gear_ratio
         return delta_steps/dt
 
     # Veclocity motion model
     def base_velocity(self):
-        v = (self.wl*self.r + self.wr*self.r)/2.0
-        w = (self.wl - self.wr)/self.l
+        v = (self.wl*self.wheel_radius + self.wr*self.wheel_radius)/2.0
+        w = (self.wl - self.wr)/self.wheel_sep
         return v, w
 
     # At the end of a given time step, update the 'pose', essentially update the
     # internally stored position of the robot.
     def pose_update(self, duty_cycle_l, duty_cycle_r, dir_l, dir_r):
         dt = self.dt
-        self.motor_drive(motor_l, duty_cycle_l, dir_l) # drive left motor
-        self.motor_drive(motor_l, duty_cycle_l, dir_l) # drive right motor
+        self.motor_drive(self.motor_l, duty_cycle_l, dir_l) # drive left motor
+        self.motor_drive(self.motor_r, duty_cycle_r, dir_r) # drive right motor
 
         self.wl = self.get_encoder_angular_vel(self.encoder_l, dt) # get right motor angular vel
         self.wr = self.get_encoder_angular_vel(self.encoder_r, dt) # get left motor angular vel
@@ -75,7 +77,7 @@ class BaseRobot:
 
         # call pose update with the duty cycle. we reparameterise the duty cycle from -1 to 1 into a 0 to 1 with a single
         # flag for direction.
-        pose_update(abs(duty_cycle_l), abs(duty_cycle_r), -(abs(duty_cycle_l)/duty_cycle_l-1)/2,-(abs(duty_cycle_r)/duty_cycle_r-1)/2)
+        self.pose_update(abs(duty_cycle_l), abs(duty_cycle_r), -(abs(duty_cycle_l)/duty_cycle_l-1)/2,-(abs(duty_cycle_r)/duty_cycle_r-1)/2)
         time.sleep(self.dt)
 
     # utility function for the drive function, calculates required duty cycle for
@@ -99,15 +101,15 @@ class BaseRobot:
 
 class Robot (BaseRobot):
     def __init__(self, wheel_radius, wheel_sep, motor_l, motor_r, rotary_encoder_l, rotary_encoder_r):
-        super().__init__(self, wheel_radius, wheel_sep, motor_l, motor_r, rotary_encoder_l, rotary_encoder_r)
+        super().__init__(wheel_radius, wheel_sep, motor_l, motor_r, rotary_encoder_l, rotary_encoder_r)
     ###############################################################################################
     ### Below are functions that complete some basic movement of the robot
     ################################################################################################
     # drive_forward_for_time(self, time, target_duty_cycle=1):
     # Defintion: will drive the robot forward in a straight line for the specified amount of time
-    def drive_forward_for_time(self, time, v_desired):
+    def drive_forward_for_time(self, t, v_desired):
         start_time = time.time()
-        while (time.time() - start_time) < time:
+        while ((time.time() - start_time) < t):
             self.drive(v_desired, 0)
     # drive_forward_for_distance(self, distance, target_duty_cycle=1)
     # Defintion: will drive the robot forward in a straight line for the specified distance
@@ -118,9 +120,9 @@ class Robot (BaseRobot):
             current_distance += self.base_velocity()[0]*self.dt
     # drive_rotate_for_time(self, time, direction, target_duty_cycle=1)
     # Defintion: will rotate the robot in the specified direction for an amount of time
-    def drive_rotate_for_time(self, time, w_desired):
+    def drive_rotate_for_time(self, t, w_desired):
         start_time = time.time()
-        while (time.time() - start_time) < time:
+        while ((time.time() - start_time) < t):
             self.drive(0, w_desired)
     # drive_rotate_for_angle(self, angle, target_duty_cycle=1)
     # Defintion: will rotate the robot by the specified angle

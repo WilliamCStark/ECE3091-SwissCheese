@@ -2,7 +2,7 @@ import gpiozero
 import time
 
 # You can replace the pin with whichever pin you are using to drive the PWM input to the motor driver
-pwm = gpiozero.PWMOutputDevice(pin=12,active_high=True,initial_value=0,frequency=50000)
+pwm = gpiozero.PWMOutputDevice(pin=12,active_high=True,initial_value=0,frequency=10000)
 direction = gpiozero.OutputDevice(pin=4)
 encoder = gpiozero.RotaryEncoder(a=5, b=6,max_steps=100000)
 
