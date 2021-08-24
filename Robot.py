@@ -18,7 +18,6 @@ class BaseRobot:
         self.motor_r = motor_r # the PWM output device for the right motor
         self.encoder_l = rotary_encoder_l # the rotary encoder object for the left wheel
         self.encoder_r = rotary_encoder_l # the rotary encoder object for the left wheel
-        self.gear_ratio = 32 # 32 rotations of the motor = 1 rotation of the wheel
 
         self.previous_steps = 0
         self.dt = 0.01 # the time to sleep after applying a motor movement
@@ -35,7 +34,6 @@ class BaseRobot:
         # might need to change to accomodate gear ratio
         delta_steps = encoder.steps - self.previous_steps
         self.previous_steps = encoder.steps
-        delta_rots = delta_steps / self.gear_ratio
         return delta_steps/dt
 
     # Veclocity motion model
@@ -109,7 +107,7 @@ class Robot (BaseRobot):
     # Defintion: will drive the robot forward in a straight line for the specified amount of time
     def drive_forward_for_time(self, t, v_desired):
         start_time = time.time()
-        while ((time.time() - start_time) < t):
+        while (time.time() - start_time) < t:
             self.drive(v_desired, 0)
     # drive_forward_for_distance(self, distance, target_duty_cycle=1)
     # Defintion: will drive the robot forward in a straight line for the specified distance
@@ -122,7 +120,7 @@ class Robot (BaseRobot):
     # Defintion: will rotate the robot in the specified direction for an amount of time
     def drive_rotate_for_time(self, t, w_desired):
         start_time = time.time()
-        while ((time.time() - start_time) < t):
+        while (time.time() - start_time) < t:
             self.drive(0, w_desired)
     # drive_rotate_for_angle(self, angle, target_duty_cycle=1)
     # Defintion: will rotate the robot by the specified angle
@@ -151,9 +149,8 @@ class Robot (BaseRobot):
 
 # A navigating robot can get to destination locations and navigate obstacles
 def NavigatingRobot(Robot):
-    def __init__(self, wheel_radius, wheel_sep, motor_l, motor_r, rotary_encoder_l, rotary_encoder_r, sensor):
+    def __init__(self, wheel_radius, wheel_sep, motor_l, motor_r, rotary_encoder_l, rotary_encoder_r):
         super().__init__(self, wheel_radius, wheel_sep, motor_l, motor_r, rotary_encoder_l, rotary_encoder_r)
-        self.sensor = sensor
 
 class Motor:
     def __init__(self, pwm_output, direction_output):
