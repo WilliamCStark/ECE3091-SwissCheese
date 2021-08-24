@@ -18,6 +18,7 @@ class BaseRobot:
         self.motor_r = motor_r # the PWM output device for the right motor
         self.encoder_l = rotary_encoder_l # the rotary encoder object for the left wheel
         self.encoder_r = rotary_encoder_l # the rotary encoder object for the left wheel
+        self.gear_ratio = 32
 
         self.previous_steps = 0
         self.dt = 0.01 # the time to sleep after applying a motor movement
@@ -34,6 +35,7 @@ class BaseRobot:
         # might need to change to accomodate gear ratio
         delta_steps = encoder.steps - self.previous_steps
         self.previous_steps = encoder.steps
+        delta_rots = delta_steps / self.gear_ratio
         return delta_steps/dt
 
     # Veclocity motion model
@@ -149,8 +151,9 @@ class Robot (BaseRobot):
 
 # A navigating robot can get to destination locations and navigate obstacles
 def NavigatingRobot(Robot):
-    def __init__(self, wheel_radius, wheel_sep, motor_l, motor_r, rotary_encoder_l, rotary_encoder_r):
+    def __init__(self, wheel_radius, wheel_sep, motor_l, motor_r, rotary_encoder_l, rotary_encoder_r, sensor):
         super().__init__(self, wheel_radius, wheel_sep, motor_l, motor_r, rotary_encoder_l, rotary_encoder_r)
+        self.sensor = sensor
 
 class Motor:
     def __init__(self, pwm_output, direction_output):
