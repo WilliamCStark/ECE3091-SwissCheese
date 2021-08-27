@@ -3,7 +3,7 @@ import numpy as np
 import gpiozero
 
 class BaseRobot:
-    def __init__(self, wheel_radius, wheel_sep, motor_l, motor_r, rotary_encoder_l, rotary_encoder_r):
+    def __init__(self, wheel_radius, wheel_sep, motor_l, motor_r, rotary_encoder_l, rotary_encoder_r, q=None):
         self.x = 0.0 # y-pos (in cm)
         self.y = 0.0 # x-pos (in cm)
         self.th = 0.0 # orientation (in radians)
@@ -26,8 +26,12 @@ class BaseRobot:
         self.e_sum_l = 0
         self.e_sum_r = 0
 
+        self.q = q # the queue to put pertinent robot variables to be delivered to the main thread from an adjacent thread
+
 
     def motor_drive(self, motor, duty_cycle, dir):
+        #print("in here")
+        #print(motor.PWM)
         motor.PWM.value = duty_cycle
         motor.DIR = dir
 
@@ -78,7 +82,9 @@ class BaseRobot:
         # call pose update with the duty cycle. we reparameterise the duty cycle from -1 to 1 into a 0 to 1 with a single
         # flag for direction.
         self.pose_update(abs(duty_cycle_l), abs(duty_cycle_r), -(abs(duty_cycle_l)/duty_cycle_l-1)/2,-(abs(duty_cycle_r)/duty_cycle_r-1)/2)
-        time.sleep(self.dt)
+        # Push the change to the robot in this thread to the queue so the main thread may update it's representation
+        self.update_q()
+        time.sleep(self.dt) # sleep after each drive call so we only drive the robot in increments
 
     # utility function for the drive function, calculates required duty cycle for
     # a desired step velocity and minimizes accumulated error.
@@ -97,11 +103,15 @@ class BaseRobot:
         self.motor_l.PWM.value = 0
         self.motor_r.PWM.value = 0
 
+    # Below builds the queue to be passed to the other thread
+    def update_q(self):
+        q = [self.x, self.y, self.th, self.wl, self.wr] # the only variables we want the thread robot to keep
+        self.q.put(q)
 
 
 class Robot (BaseRobot):
-    def __init__(self, wheel_radius, wheel_sep, motor_l, motor_r, rotary_encoder_l, rotary_encoder_r):
-        super().__init__(wheel_radius, wheel_sep, motor_l, motor_r, rotary_encoder_l, rotary_encoder_r)
+    def __init__(self, wheel_radius, wheel_sep, motor_l, motor_r, rotary_encoder_l, rotary_encoder_r, q=None):
+        super().__init__(wheel_radius, wheel_sep, motor_l, motor_r, rotary_encoder_l, rotary_encoder_r, q)
     ###############################################################################################
     ### Below are functions that complete some basic movement of the robot
     ################################################################################################
@@ -117,7 +127,8 @@ class Robot (BaseRobot):
         current_distance = 0
         while current_distance < distance:
             self.drive(v_desired, 0)
-            current_distance += self.base_velocity()[0]*self.dt
+            current_distance += v_desired*self.dt#self.base_velocity()[0]*self.dt TEST EDIT USE RIGHT OF # IN ACTUAL
+            #print(current_distance, distance)
     # drive_rotate_for_time(self, time, direction, target_duty_cycle=1)
     # Defintion: will rotate the robot in the specified direction for an amount of time
     def drive_rotate_for_time(self, t, w_desired):
@@ -129,8 +140,9 @@ class Robot (BaseRobot):
     def drive_rotate_for_angle(self, angle, w_desired):
         current_angle = 0
         while current_angle < angle:
-            self.drive(v_desired, 0)
-            current_distance += self.base_velocity()[1]*self.dt
+            self.drive(0, w_desired)
+            current_angle += w_desired*self.dt#self.base_velocity()[1]*self.dt TEST EDIT USE RIGHT OF # IN ACTUAL
+            #print(current_angle, angle)
     # drive_rotate_to_angle(self, angle, target_duty_cycle=1)
     # Defintion: will rotate the robot to a specified global angle. angle does not need to be between 0 and 2 pi
     # function will treat angles outside this range as though they are
@@ -141,13 +153,13 @@ class Robot (BaseRobot):
         self.drive_rotate_for_angle(alpha, w_desired)
     # drive_to_point(self, dest_x, dest_y)
     # Defintion: will drive the robot to the destination location, in a straight line
-    def drive_to_point(self, dest_x, dest_y, v_desired):
+    def drive_to_point(self, dest_x, dest_y, v_desired, w_desired):
         delta_x = dest_x - self.x
         delta_y = dest_y - self.y
         angle = np.arctan2(delta_y,delta_x)
-        self.drive_rotate_to_angle(angle,np.pi/3) # rotate a half turn in 3 seconds
+        self.drive_rotate_to_angle(angle,w_desired) # rotate a half turn in 3 seconds
         distance = np.sqrt(delta_x**2 + delta_y**2)
-        self.drive_forward_for_distance(distance,30) # travel 30cm per second
+        self.drive_forward_for_distance(distance,v_desired) # travel 30cm per second
 
 # A navigating robot can get to destination locations and navigate obstacles
 def NavigatingRobot(Robot):
