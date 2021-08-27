@@ -1,6 +1,7 @@
 import time
 import numpy as np
 import gpiozero
+import queue
 
 class BaseRobot:
     def __init__(self, wheel_radius, wheel_sep, motor_l, motor_r, rotary_encoder_l, rotary_encoder_r, q=None):
@@ -27,6 +28,7 @@ class BaseRobot:
         self.e_sum_r = 0
 
         self.q = q # the queue to put pertinent robot variables to be delivered to the main thread from an adjacent thread
+        self.kill_pipe = None # a queue solely for the purpose of telling this thread it's about to die
 
 
     def motor_drive(self, motor, duty_cycle, dir):
@@ -84,6 +86,13 @@ class BaseRobot:
         self.pose_update(abs(duty_cycle_l), abs(duty_cycle_r), -(abs(duty_cycle_l)/duty_cycle_l-1)/2,-(abs(duty_cycle_r)/duty_cycle_r-1)/2)
         # Push the change to the robot in this thread to the queue so the main thread may update it's representation
         self.update_q()
+        self.check_death()
+        # ---------------------------------------------------------------------------------------------
+        # fake pose update for testing
+        self.x = self.x + self.dt*v_desired*np.cos(self.th)
+        self.y = self.y + self.dt*v_desired*np.sin(self.th)
+        self.th = self.th + w_desired*self.dt
+        print("driving")
         time.sleep(self.dt) # sleep after each drive call so we only drive the robot in increments
 
     # utility function for the drive function, calculates required duty cycle for
@@ -105,8 +114,13 @@ class BaseRobot:
 
     # Below builds the queue to be passed to the other thread
     def update_q(self):
-        q = [self.x, self.y, self.th, self.wl, self.wr] # the only variables we want the thread robot to keep
+        q = ["RobotDriver", self.x, self.y, self.th, self.wl, self.wr] # the only variables we want the thread robot to keep
+        #print(q)
         self.q.put(q)
+
+    def check_death(self):
+        if self.kill_pipe.poll():
+            self.kill_pipe.send("okay.")
 
 
 class Robot (BaseRobot):
@@ -127,7 +141,7 @@ class Robot (BaseRobot):
         current_distance = 0
         while current_distance < distance:
             self.drive(v_desired, 0)
-            current_distance += v_desired*self.dt#self.base_velocity()[0]*self.dt TEST EDIT USE RIGHT OF # IN ACTUAL
+            current_distance += v_desired*self.dt#self.base_velocity()[0]*self.dt #TEST EDIT USE RIGHT OF # IN ACTUAL
             #print(current_distance, distance)
     # drive_rotate_for_time(self, time, direction, target_duty_cycle=1)
     # Defintion: will rotate the robot in the specified direction for an amount of time
@@ -141,7 +155,7 @@ class Robot (BaseRobot):
         current_angle = 0
         while current_angle < angle:
             self.drive(0, w_desired)
-            current_angle += w_desired*self.dt#self.base_velocity()[1]*self.dt TEST EDIT USE RIGHT OF # IN ACTUAL
+            current_angle += w_desired*self.dt#self.base_velocity()[1]*self.dt #TEST EDIT USE RIGHT OF # IN ACTUAL
             #print(current_angle, angle)
     # drive_rotate_to_angle(self, angle, target_duty_cycle=1)
     # Defintion: will rotate the robot to a specified global angle. angle does not need to be between 0 and 2 pi
