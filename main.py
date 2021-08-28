@@ -85,21 +85,7 @@ if __name__ == '__main__':
                     terminated = True
             drive_to_goal_process.terminate()
             drive_to_goal_process.join()
-            print("terminated")
+            print("Terminated")
             # Start the new driving process (get around the obstacle)
             break
-    print("done with all")
-
-# Non-multiprocessing approach
-# exit = False
-# last_update = time.time()
-# dt = 0.01
-# while not exit:
-#     # robot.start_action
-#     if time.time() - last_update > dt:
-#         # Update the robot object by a step
-#
-#         # Check some condition like collision, or being back in line with the goal and act accordingly
-#         # (maybe call the object avoidance protocol)
-#
-#         # abandon if the goal is complete.
+    print("Done with all")
