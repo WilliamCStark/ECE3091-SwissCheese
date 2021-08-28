@@ -88,12 +88,6 @@ class BaseRobot:
         if self.pipe is not None:
             self.push_to_pipe()
             self.check_death()
-        # ---------------------------------------------------------------------------------------------
-        # fake pose update for testing
-        self.x = self.x + self.dt*v_desired*np.cos(self.th)
-        self.y = self.y + self.dt*v_desired*np.sin(self.th)
-        self.th = self.th + w_desired*self.dt
-        print("driving")
         time.sleep(self.dt) # sleep after each drive call so we only drive the robot in increments
 
     # utility function for the drive function, calculates required duty cycle for
@@ -115,9 +109,11 @@ class BaseRobot:
 
     def check_death(self):
         if self.pipe.poll():
-            # if the main thread every communicates with us, it is to tell us to kill ourselves
+            # if the main thread ever communicates with us, it is to tell us we are about to die
             self.stop() # make sure to cease all motion now we are dead
             self.pipe.close() # close the pipe, so the main thread knows we have finished up
+            while True:
+                pass
 
     def push_to_pipe(self):
         msg = [self.x, self.y, self.th] # the only variables we want the thread robot to keep
@@ -144,7 +140,6 @@ class Robot (BaseRobot):
             self.drive(v_desired, 0)
             #current_distance += self.base_velocity()[0]*self.dt
             current_distance += v_desired*self.dt #TEST EDIT
-            #print(current_distance, distance)
     # drive_rotate_for_time(self, time, direction, target_duty_cycle=1)
     # Defintion: will rotate the robot in the specified direction for an amount of time
     def drive_rotate_for_time(self, t, w_desired):
@@ -159,7 +154,6 @@ class Robot (BaseRobot):
             self.drive(0, w_desired)
             #current_angle += self.base_velocity()[1]*self.dt
             current_angle += w_desired*self.dt #TEST EDIT
-            #print(current_angle, angle)
     # drive_rotate_to_angle(self, angle, target_duty_cycle=1)
     # Defintion: will rotate the robot to a specified global angle. angle does not need to be between 0 and 2 pi
     # function will treat angles outside this range as though they are
@@ -176,7 +170,7 @@ class Robot (BaseRobot):
         angle = np.arctan2(delta_y,delta_x)
         self.drive_rotate_to_angle(angle,w_desired)
         distance = np.sqrt(delta_x**2 + delta_y**2)
-        self.drive_forward_for_distance(distance,v_desired) 
+        self.drive_forward_for_distance(distance,v_desired)
 
 class Motor:
     def __init__(self, pwm_output, direction_output):

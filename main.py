@@ -73,7 +73,7 @@ if __name__ == '__main__':
             except EOFError:
                 # the thread has finished it's business, we should finish up now
                 done = True
-        elif sensor_pipe_PARENT.poll():
+        if sensor_pipe_PARENT.poll():
             # Sensor thread has detected a collision
             print("COLLIDED")
             dtg_pipe_PARENT.send("Die")
