@@ -19,7 +19,7 @@ class BaseRobot:
         self.motor_r = motor_r # the PWM output device for the right motor
         self.encoder_l = rotary_encoder_l # the rotary encoder object for the left wheel
         self.encoder_r = rotary_encoder_r # the rotary encoder object for the right wheel
-        self.gear_ratio = 32
+        self.gear_ratio = 32 # need to have a different gear ratio for each wheel
 
         self.previous_steps_l = rotary_encoder_l.steps
         self.previous_steps_r = rotary_encoder_r.steps
@@ -41,9 +41,9 @@ class BaseRobot:
     def get_encoder_angular_vel(self, encoder, dt, previous_steps):
         # might need to change to accomodate gear ratio
         delta_steps = encoder.steps - previous_steps
-        previous_steps = encoder.steps
-        delta_rots = delta_steps / self.gear_ratio
-        return (delta_steps/dt, previous_steps)
+        previous_steps = encoder.steps/32 * 2*np.pi # convert steps value to revs/s, then to rad/s
+        delta_rots = delta_steps / self.gear_ratio # convert to rad/s for the wheel itself
+        return (delta_rots/dt, previous_steps)
 
     # Veclocity motion model
     def base_velocity(self):
@@ -58,8 +58,8 @@ class BaseRobot:
         self.motor_drive(self.motor_l, duty_cycle_l, dir_l) # drive left motor
         self.motor_drive(self.motor_r, duty_cycle_r, dir_r) # drive right motor
 
-        self.wl, self.previosu_steps_l = self.get_encoder_angular_vel(self.encoder_l, dt, self.previosu_steps_l) # get right motor angular vel
-        self.wr, self.previosu_steps_r = self.get_encoder_angular_vel(self.encoder_r, dt, self.previosu_steps_r) # get left motor angular vel
+        self.wl, self.previous_steps_l = self.get_encoder_angular_vel(self.encoder_l, dt, self.previous_steps_l) # get right motor angular vel
+        self.wr, self.previous_steps_r = self.get_encoder_angular_vel(self.encoder_r, dt, self.previous_steps_r) # get left motor angular vel
 
         v, w = self.base_velocity() # get the base velocity from wheel rotations
 
