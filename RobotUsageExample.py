@@ -15,5 +15,5 @@ encoder_r = gpiozero.RotaryEncoder(a=23, b=24,max_steps=100000)  # using GPIO 23
 robot = Robot(3, 10, motor_l, motor_r, encoder_l, encoder_r)
 print(robot.motor_l.PWM)
 # Will drive forward for 10 second
-v_desired = 5
+v_desired = 5 # cm per second
 robot.drive_forward_for_time(10, v_desired)

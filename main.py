@@ -11,8 +11,6 @@ from gpiozero import DistanceSensor
 # For testing on a PC that isn't the PI. Make sure to comment out when running on pi
 gpiozero.Device.pin_factory = MockFactory(pin_class=MockPWMPin)
 
-#sensor = gpiozero.DistanceSensor(echo=1,trigger=7)
-
 something = 2
 motor_l = Motor(gpiozero.PWMOutputDevice(pin=12,active_high=True,initial_value=0,frequency=10000), gpiozero.OutputDevice(pin=5)) # using GPIO 12 for PWM, GPIO 5 for direction
 motor_r = Motor(gpiozero.PWMOutputDevice(pin=13,active_high=True,initial_value=0,frequency=10000), gpiozero.OutputDevice(pin=6))# using GPIO 13 for PWM, GPIO 6 for direction
