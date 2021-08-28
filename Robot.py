@@ -29,7 +29,6 @@ class BaseRobot:
         self.e_sum_r = 0
 
         self.pipe = pipe # the queue to put pertinent robot variables to be delivered to the main thread from an adjacent thread
-        self.kill_pipe = None # a queue solely for the purpose of telling this thread it's about to die
 
 
     def motor_drive(self, motor, duty_cycle, dir):
@@ -86,22 +85,15 @@ class BaseRobot:
         # flag for direction.
         self.pose_update(abs(duty_cycle_l), abs(duty_cycle_r), -(abs(duty_cycle_l)/duty_cycle_l-1)/2,-(abs(duty_cycle_r)/duty_cycle_r-1)/2)
         # Push the change to the robot in this thread to the queue so the main thread may update it's representation
-        #self.update_q()
-        #self.check_death()
+        if self.pipe is not None:
+            self.push_to_pipe()
+            self.check_death()
         # ---------------------------------------------------------------------------------------------
-<<<<<<< HEAD
-        # # fake pose update for testing
-        # self.x = self.x + self.dt*v_desired*np.cos(self.th)
-        # self.y = self.y + self.dt*v_desired*np.sin(self.th)
-        # self.th = self.th + w_desired*self.dt
-        #print("driving")
-=======
         # fake pose update for testing
-        # self.x = self.x + self.dt*v_desired*np.cos(self.th)
-        # self.y = self.y + self.dt*v_desired*np.sin(self.th)
-        # self.th = self.th + w_desired*self.dt
-        # print("driving")
->>>>>>> main
+        self.x = self.x + self.dt*v_desired*np.cos(self.th)
+        self.y = self.y + self.dt*v_desired*np.sin(self.th)
+        self.th = self.th + w_desired*self.dt
+        print("driving")
         time.sleep(self.dt) # sleep after each drive call so we only drive the robot in increments
 
     # utility function for the drive function, calculates required duty cycle for
@@ -121,15 +113,15 @@ class BaseRobot:
         self.motor_l.PWM.value = 0
         self.motor_r.PWM.value = 0
 
-    # Below builds the queue to be passed to the other thread
-    def update_q(self):
-        q = ["RobotDriver", self.x, self.y, self.th, self.wl, self.wr] # the only variables we want the thread robot to keep
-        #print(q)
-        self.q.put(q)
-
     def check_death(self):
-        if self.kill_pipe.poll():
-            self.kill_pipe.send("okay.")
+        if self.pipe.poll():
+            # if the main thread every communicates with us, it is to tell us to kill ourselves
+            self.stop() # make sure to cease all motion now we are dead
+            self.pipe.close() # close the pipe, so the main thread knows we have finished up
+
+    def push_to_pipe(self):
+        msg = [self.x, self.y, self.th] # the only variables we want the thread robot to keep
+        self.pipe.send(msg)
 
 
 class Robot (BaseRobot):
@@ -150,7 +142,8 @@ class Robot (BaseRobot):
         current_distance = 0
         while current_distance < distance:
             self.drive(v_desired, 0)
-            current_distance += self.base_velocity()[0]*self.dt #TEST EDIT USE RIGHT OF # IN ACTUAL
+            #current_distance += self.base_velocity()[0]*self.dt
+            current_distance += v_desired*self.dt #TEST EDIT
             #print(current_distance, distance)
     # drive_rotate_for_time(self, time, direction, target_duty_cycle=1)
     # Defintion: will rotate the robot in the specified direction for an amount of time
@@ -164,7 +157,8 @@ class Robot (BaseRobot):
         current_angle = 0
         while current_angle < angle:
             self.drive(0, w_desired)
-            current_angle += self.base_velocity()[1]*self.dt #TEST EDIT USE RIGHT OF # IN ACTUAL
+            #current_angle += self.base_velocity()[1]*self.dt
+            current_angle += w_desired*self.dt #TEST EDIT
             #print(current_angle, angle)
     # drive_rotate_to_angle(self, angle, target_duty_cycle=1)
     # Defintion: will rotate the robot to a specified global angle. angle does not need to be between 0 and 2 pi
@@ -180,15 +174,9 @@ class Robot (BaseRobot):
         delta_x = dest_x - self.x
         delta_y = dest_y - self.y
         angle = np.arctan2(delta_y,delta_x)
-        self.drive_rotate_to_angle(angle,w_desired) # rotate a half turn in 3 seconds
+        self.drive_rotate_to_angle(angle,w_desired)
         distance = np.sqrt(delta_x**2 + delta_y**2)
-        self.drive_forward_for_distance(distance,v_desired) # travel 30cm per second
-
-# A navigating robot can get to destination locations and navigate obstacles
-def NavigatingRobot(Robot):
-    def __init__(self, wheel_radius, wheel_sep, motor_l, motor_r, rotary_encoder_l, rotary_encoder_r, sensor):
-        super().__init__(self, wheel_radius, wheel_sep, motor_l, motor_r, rotary_encoder_l, rotary_encoder_r)
-        self.sensor = sensor
+        self.drive_forward_for_distance(distance,v_desired) 
 
 class Motor:
     def __init__(self, pwm_output, direction_output):
