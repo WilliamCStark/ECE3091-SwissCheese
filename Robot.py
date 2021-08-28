@@ -89,10 +89,10 @@ class BaseRobot:
         self.check_death()
         # ---------------------------------------------------------------------------------------------
         # fake pose update for testing
-        self.x = self.x + self.dt*v_desired*np.cos(self.th)
-        self.y = self.y + self.dt*v_desired*np.sin(self.th)
-        self.th = self.th + w_desired*self.dt
-        print("driving")
+        # self.x = self.x + self.dt*v_desired*np.cos(self.th)
+        # self.y = self.y + self.dt*v_desired*np.sin(self.th)
+        # self.th = self.th + w_desired*self.dt
+        # print("driving")
         time.sleep(self.dt) # sleep after each drive call so we only drive the robot in increments
 
     # utility function for the drive function, calculates required duty cycle for
@@ -141,7 +141,7 @@ class Robot (BaseRobot):
         current_distance = 0
         while current_distance < distance:
             self.drive(v_desired, 0)
-            current_distance += v_desired*self.dt#self.base_velocity()[0]*self.dt #TEST EDIT USE RIGHT OF # IN ACTUAL
+            current_distance += self.base_velocity()[0]*self.dt #TEST EDIT USE RIGHT OF # IN ACTUAL
             #print(current_distance, distance)
     # drive_rotate_for_time(self, time, direction, target_duty_cycle=1)
     # Defintion: will rotate the robot in the specified direction for an amount of time
@@ -155,7 +155,7 @@ class Robot (BaseRobot):
         current_angle = 0
         while current_angle < angle:
             self.drive(0, w_desired)
-            current_angle += w_desired*self.dt#self.base_velocity()[1]*self.dt #TEST EDIT USE RIGHT OF # IN ACTUAL
+            current_angle += self.base_velocity()[1]*self.dt #TEST EDIT USE RIGHT OF # IN ACTUAL
             #print(current_angle, angle)
     # drive_rotate_to_angle(self, angle, target_duty_cycle=1)
     # Defintion: will rotate the robot to a specified global angle. angle does not need to be between 0 and 2 pi
