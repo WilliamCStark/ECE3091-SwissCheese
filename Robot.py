@@ -18,10 +18,11 @@ class BaseRobot:
         self.motor_l = motor_l # the PWM output device for the left motor
         self.motor_r = motor_r # the PWM output device for the right motor
         self.encoder_l = rotary_encoder_l # the rotary encoder object for the left wheel
-        self.encoder_r = rotary_encoder_l # the rotary encoder object for the left wheel
-        self.gear_ratio = 32
+        self.encoder_r = rotary_encoder_r # the rotary encoder object for the right wheel
+        self.gear_ratio = 32 # need to have a different gear ratio for each wheel
 
-        self.previous_steps = 0
+        self.previous_steps_l = rotary_encoder_l.steps
+        self.previous_steps_r = rotary_encoder_r.steps
         self.dt = 0.01 # the time to sleep after applying a motor movement
 
         self.e_sum_l = 0
@@ -37,12 +38,12 @@ class BaseRobot:
         motor.PWM.value = duty_cycle
         motor.DIR = dir
 
-    def get_encoder_angular_vel(self, encoder, dt):
+    def get_encoder_angular_vel(self, encoder, dt, previous_steps):
         # might need to change to accomodate gear ratio
-        delta_steps = encoder.steps - self.previous_steps
-        self.previous_steps = encoder.steps
-        delta_rots = delta_steps / self.gear_ratio
-        return delta_steps/dt
+        delta_steps = encoder.steps - previous_steps
+        previous_steps = encoder.steps/32 * 2*np.pi # convert steps value to revs/s, then to rad/s
+        delta_rots = delta_steps / self.gear_ratio # convert to rad/s for the wheel itself
+        return (delta_rots/dt, previous_steps)
 
     # Veclocity motion model
     def base_velocity(self):
@@ -57,8 +58,8 @@ class BaseRobot:
         self.motor_drive(self.motor_l, duty_cycle_l, dir_l) # drive left motor
         self.motor_drive(self.motor_r, duty_cycle_r, dir_r) # drive right motor
 
-        self.wl = self.get_encoder_angular_vel(self.encoder_l, dt) # get right motor angular vel
-        self.wr = self.get_encoder_angular_vel(self.encoder_r, dt) # get left motor angular vel
+        self.wl, self.previous_steps_l = self.get_encoder_angular_vel(self.encoder_l, dt, self.previous_steps_l) # get right motor angular vel
+        self.wr, self.previous_steps_r = self.get_encoder_angular_vel(self.encoder_r, dt, self.previous_steps_r) # get left motor angular vel
 
         v, w = self.base_velocity() # get the base velocity from wheel rotations
 
@@ -85,14 +86,22 @@ class BaseRobot:
         # flag for direction.
         self.pose_update(abs(duty_cycle_l), abs(duty_cycle_r), -(abs(duty_cycle_l)/duty_cycle_l-1)/2,-(abs(duty_cycle_r)/duty_cycle_r-1)/2)
         # Push the change to the robot in this thread to the queue so the main thread may update it's representation
-        self.update_q()
-        self.check_death()
+        #self.update_q()
+        #self.check_death()
         # ---------------------------------------------------------------------------------------------
+<<<<<<< HEAD
         # # fake pose update for testing
         # self.x = self.x + self.dt*v_desired*np.cos(self.th)
         # self.y = self.y + self.dt*v_desired*np.sin(self.th)
         # self.th = self.th + w_desired*self.dt
         #print("driving")
+=======
+        # fake pose update for testing
+        # self.x = self.x + self.dt*v_desired*np.cos(self.th)
+        # self.y = self.y + self.dt*v_desired*np.sin(self.th)
+        # self.th = self.th + w_desired*self.dt
+        # print("driving")
+>>>>>>> main
         time.sleep(self.dt) # sleep after each drive call so we only drive the robot in increments
 
     # utility function for the drive function, calculates required duty cycle for
