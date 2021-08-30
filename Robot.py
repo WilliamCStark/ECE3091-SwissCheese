@@ -40,9 +40,10 @@ class BaseRobot:
 
     def get_encoder_angular_vel(self, encoder, dt, previous_steps, gear_ratio):
         # might need to change to accomodate gear ratio
+        steps_in_rev = 32
         delta_steps = encoder.steps - previous_steps
-        previous_steps = encoder.steps/32 * 2*np.pi # convert steps value to revs/s, then to rad/s
-        delta_rots = delta_steps / gear_ratio # convert to rad/s for the wheel itself
+        previous_steps = encoder.steps # store previous steps
+        delta_rots = delta_steps/steps_in_rev * 2*np.pi / gear_ratio # convert to rad/s for the wheel itself
         return (delta_rots/dt, previous_steps)
 
     # Veclocity motion model
