@@ -60,6 +60,7 @@ class BaseRobot:
         self.motor_drive(self.motor_r, duty_cycle_r, dir_r) # drive right motor
 
         self.wl, self.previous_steps_l = self.get_encoder_angular_vel(self.encoder_l, dt, self.previous_steps_l, self.gear_ratio_l) # get right motor angular vel
+        self.wl = -self.wl # angular velocity value is backwards, invert to make forwards
         self.wr, self.previous_steps_r = self.get_encoder_angular_vel(self.encoder_r, dt, self.previous_steps_r, self.gear_ratio_r) # get left motor angular vel
 
         v, w = self.base_velocity() # get the base velocity from wheel rotations
@@ -92,13 +93,15 @@ class BaseRobot:
             self.check_death()
         print("Rotational velocity of left wheel: " + str(self.wl))
         print("Rotational velocity of right wheel: " + str(self.wr))
+        print("Forward velocity: " + str(self.base_velocity()[0]))
+        print("Rotational velocity: " + str(self.base_velocity()[1]))
         time.sleep(self.dt) # sleep after each drive call so we only drive the robot in increments
 
     # utility function for the drive function, calculates required duty cycle for
     # a desired step velocity and minimizes accumulated error.
     def p_control(self,w_desired,w_measured,e_sum):
-        kp = 0.1
-        ki = 0.01
+        kp = 1
+        ki = 0.25
 
         duty_cycle = min(max(-1,kp*(w_desired-w_measured) + ki*e_sum),1)
 
