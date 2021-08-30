@@ -160,7 +160,7 @@ class Robot (BaseRobot):
     def drive_rotate_to_angle(self, angle, w_desired):
         alpha = angle % (2*np.pi) - self.th % (2*np.pi) # convert both to angles between 0 and 2 pi
         if (abs(alpha) > np.pi):
-            alpha = 2*pi - abs(alpha)
+            alpha = 2*np.pi - abs(alpha)
         self.drive_rotate_for_angle(alpha, w_desired)
     # drive_to_point(self, dest_x, dest_y)
     # Defintion: will drive the robot to the destination location, in a straight line
