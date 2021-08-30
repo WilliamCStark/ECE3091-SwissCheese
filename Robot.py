@@ -19,7 +19,8 @@ class BaseRobot:
         self.motor_r = motor_r # the PWM output device for the right motor
         self.encoder_l = rotary_encoder_l # the rotary encoder object for the left wheel
         self.encoder_r = rotary_encoder_r # the rotary encoder object for the right wheel
-        self.gear_ratio = 32 # need to have a different gear ratio for each wheel
+        self.gear_ratio_l = 32 # need to have a different gear ratio for each wheel
+        self.gear_ratio_r = 32
 
         self.previous_steps_l = rotary_encoder_l.steps
         self.previous_steps_r = rotary_encoder_r.steps
@@ -28,7 +29,7 @@ class BaseRobot:
         self.e_sum_l = 0
         self.e_sum_r = 0
 
-        self.pipe = pipe # the queue to put pertinent robot variables to be delivered to the main thread from an adjacent thread
+        self.pipe = pipe # the pipe to put pertinent robot variables to be delivered to the main thread from an adjacent thread
 
 
     def motor_drive(self, motor, duty_cycle, dir):
@@ -37,11 +38,11 @@ class BaseRobot:
         motor.PWM.value = duty_cycle
         motor.DIR = dir
 
-    def get_encoder_angular_vel(self, encoder, dt, previous_steps):
+    def get_encoder_angular_vel(self, encoder, dt, previous_steps, gear_ratio):
         # might need to change to accomodate gear ratio
         delta_steps = encoder.steps - previous_steps
         previous_steps = encoder.steps/32 * 2*np.pi # convert steps value to revs/s, then to rad/s
-        delta_rots = delta_steps / self.gear_ratio # convert to rad/s for the wheel itself
+        delta_rots = delta_steps / gear_ratio # convert to rad/s for the wheel itself
         return (delta_rots/dt, previous_steps)
 
     # Veclocity motion model
@@ -57,8 +58,8 @@ class BaseRobot:
         self.motor_drive(self.motor_l, duty_cycle_l, dir_l) # drive left motor
         self.motor_drive(self.motor_r, duty_cycle_r, dir_r) # drive right motor
 
-        self.wl, self.previous_steps_l = self.get_encoder_angular_vel(self.encoder_l, dt, self.previous_steps_l) # get right motor angular vel
-        self.wr, self.previous_steps_r = self.get_encoder_angular_vel(self.encoder_r, dt, self.previous_steps_r) # get left motor angular vel
+        self.wl, self.previous_steps_l = self.get_encoder_angular_vel(self.encoder_l, dt, self.previous_steps_l, self.gear_ratio_l) # get right motor angular vel
+        self.wr, self.previous_steps_r = self.get_encoder_angular_vel(self.encoder_r, dt, self.previous_steps_r, self.gear_ratio_r) # get left motor angular vel
 
         v, w = self.base_velocity() # get the base velocity from wheel rotations
 
@@ -88,6 +89,8 @@ class BaseRobot:
         if self.pipe is not None:
             self.push_to_pipe()
             self.check_death()
+        print("Rotational velocity of left wheel: " + str(self.wl))
+        print("Rotational velocity of right wheel: " + str(self.wr))
         time.sleep(self.dt) # sleep after each drive call so we only drive the robot in increments
 
     # utility function for the drive function, calculates required duty cycle for
@@ -138,8 +141,8 @@ class Robot (BaseRobot):
         current_distance = 0
         while current_distance < distance:
             self.drive(v_desired, 0)
-            #current_distance += self.base_velocity()[0]*self.dt
-            current_distance += v_desired*self.dt #TEST EDIT
+            current_distance += self.base_velocity()[0]*self.dt
+            #current_distance += v_desired*self.dt #TEST EDIT
     # drive_rotate_for_time(self, time, direction, target_duty_cycle=1)
     # Defintion: will rotate the robot in the specified direction for an amount of time
     def drive_rotate_for_time(self, t, w_desired):
@@ -152,8 +155,8 @@ class Robot (BaseRobot):
         current_angle = 0
         while current_angle < angle:
             self.drive(0, w_desired)
-            #current_angle += self.base_velocity()[1]*self.dt
-            current_angle += w_desired*self.dt #TEST EDIT
+            current_angle += self.base_velocity()[1]*self.dt
+            #current_angle += w_desired*self.dt #TEST EDIT
     # drive_rotate_to_angle(self, angle, target_duty_cycle=1)
     # Defintion: will rotate the robot to a specified global angle. angle does not need to be between 0 and 2 pi
     # function will treat angles outside this range as though they are
