@@ -55,6 +55,8 @@ class BaseRobot:
     # At the end of a given time step, update the 'pose', essentially update the
     # internally stored position of the robot.
     def pose_update(self, duty_cycle_l, duty_cycle_r, dir_l, dir_r):
+        print("Left duty cycle: " + str(duty_cycle_l))
+        print("Right duty cycle: " + str(duty_cycle_r))
         dt = self.dt
         self.motor_drive(self.motor_l, duty_cycle_l, dir_l) # drive left motor
         self.motor_drive(self.motor_r, duty_cycle_r, dir_r) # drive right motor
@@ -86,7 +88,7 @@ class BaseRobot:
 
         # call pose update with the duty cycle. we reparameterise the duty cycle from -1 to 1 into a 0 to 1 with a single
         # flag for direction.
-        self.pose_update(abs(duty_cycle_l), abs(duty_cycle_r), -(abs(duty_cycle_l)/duty_cycle_l-1)/2,-(abs(duty_cycle_r)/duty_cycle_r-1)/2)
+        self.pose_update(abs(duty_cycle_l), abs(duty_cycle_r), (np.sign(-duty_cycle_l)+1)/2,(np.sign(-duty_cycle_r)+1)/2) # last two converts the sign into a direction (0 or 1)
         # Push the change to the robot in this thread to the queue so the main thread may update it's representation
         if self.pipe is not None:
             self.push_to_pipe()
