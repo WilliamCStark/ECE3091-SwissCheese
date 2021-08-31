@@ -62,8 +62,8 @@ class BaseRobot:
         self.motor_drive(self.motor_r, duty_cycle_r, dir_r) # drive right motor
 
         self.wl, self.previous_steps_l = self.get_encoder_angular_vel(self.encoder_l, dt, self.previous_steps_l, self.gear_ratio_l) # get right motor angular vel
-        self.wl = -self.wl # angular velocity value is backwards, invert to make forwards
         self.wr, self.previous_steps_r = self.get_encoder_angular_vel(self.encoder_r, dt, self.previous_steps_r, self.gear_ratio_r) # get left motor angular vel
+        self.wr = -self.wr # angular velocity value is backwards, invert to make forwards
 
         v, w = self.base_velocity() # get the base velocity from wheel rotations
 
