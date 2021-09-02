@@ -88,7 +88,7 @@ class BaseRobot:
 
         # call pose update with the duty cycle. we reparameterise the duty cycle from -1 to 1 into a 0 to 1 with a single
         # flag for direction.
-        self.pose_update(abs(duty_cycle_l), abs(duty_cycle_r), (np.sign(-duty_cycle_l)+1)/2,(np.sign(-duty_cycle_r)+1)/2) # last two converts the sign into a direction (0 or 1)
+        self.pose_update(abs(duty_cycle_l), abs(duty_cycle_r), int((np.sign(-duty_cycle_l)+1)/2),int((np.sign(-duty_cycle_r)+1)/2)) # last two converts the sign into a direction (0 or 1)
         # Push the change to the robot in this thread to the queue so the main thread may update it's representation
         if self.pipe is not None:
             self.push_to_pipe()
@@ -105,7 +105,7 @@ class BaseRobot:
         kp = 1
         ki = 0.25
 
-        duty_cycle = min(max(0.06,kp*np.sigmoid(w_desired-w_measured) + ki*e_sum),0.96)
+        duty_cycle = min(max(-0.96,kp*w_desired-w_measured + ki*e_sum),0.96)
 
         e_sum = e_sum + (w_desired-w_measured)
 
