@@ -63,7 +63,7 @@ class BaseRobot:
 
         self.wl, self.previous_steps_l = self.get_encoder_angular_vel(self.encoder_l, dt, self.previous_steps_l, self.gear_ratio_l) # get right motor angular vel
         self.wr, self.previous_steps_r = self.get_encoder_angular_vel(self.encoder_r, dt, self.previous_steps_r, self.gear_ratio_r) # get left motor angular vel
-        self.wr = -self.wr # angular velocity value is backwards, invert to make forwards
+        self.wl = -self.wl # angular velocity value is backwards, invert to make forwards
 
         v, w = self.base_velocity() # get the base velocity from wheel rotations
 
@@ -83,12 +83,14 @@ class BaseRobot:
         wl_desired = v_desired/self.wheel_radius + self.wheel_sep*w_desired/2
         wr_desired = v_desired/self.wheel_radius - self.wheel_sep*w_desired/2
 
-        duty_cycle_l,self.e_sum_l = self.p_control(wl_desired,self.wl,self.e_sum_l)
-        duty_cycle_r,self.e_sum_r = self.p_control(wr_desired,self.wr,self.e_sum_r)
+        #duty_cycle_l,self.e_sum_l = self.p_control(wl_desired,self.wl,self.e_sum_l)
+        #duty_cycle_r,self.e_sum_r = self.p_control(wr_desired,self.wr,self.e_sum_r)
+        duty_cycle_l = 0.5
+        duty_cycle_r = 0.5
 
         # call pose update with the duty cycle. we reparameterise the duty cycle from -1 to 1 into a 0 to 1 with a single
         # flag for direction.
-        self.pose_update(abs(duty_cycle_l), abs(duty_cycle_r), (np.sign(-duty_cycle_l)+1)/2,(np.sign(-duty_cycle_r)+1)/2) # last two converts the sign into a direction (0 or 1)
+        self.pose_update(abs(duty_cycle_l), abs(duty_cycle_r), (np.sign(-duty_cycle_l)+1)/2,(np.sign(-duty_cycle_r)+1)/2) # last two converts the sign into a direction -1 -> 1, 1 -> 0
         # Push the change to the robot in this thread to the queue so the main thread may update it's representation
         if self.pipe is not None:
             self.push_to_pipe()
@@ -105,6 +107,8 @@ class BaseRobot:
         kp = 1
         ki = 0.25
 
+        # neg duty cycle means go backwards
+        # pos duty cycle means go forwards
         duty_cycle = min(max(-1,kp*(w_desired-w_measured) + ki*e_sum),1)
 
         e_sum = e_sum + (w_desired-w_measured)
