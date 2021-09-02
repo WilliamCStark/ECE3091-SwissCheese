@@ -105,7 +105,7 @@ class BaseRobot:
         kp = 1
         ki = 0.25
 
-        duty_cycle = min(max(-1,kp*(w_desired-w_measured) + ki*e_sum),1)
+        duty_cycle = min(max(0.06,kp*np.sigmoid(w_desired-w_measured) + ki*e_sum),0.96)
 
         e_sum = e_sum + (w_desired-w_measured)
 
