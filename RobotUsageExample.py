@@ -12,7 +12,8 @@ motor_r = Motor(gpiozero.PWMOutputDevice(pin=13,active_high=True,initial_value=0
 encoder_l = gpiozero.RotaryEncoder(a=22, b=27,max_steps=100000)  # using GPIO 22 and GPIO 27 for a and b pins from rotary encoder
 encoder_r = gpiozero.RotaryEncoder(a=23, b=24,max_steps=100000)  # using GPIO 23 and GPIO 24 for a and b pins from rotary encoder
 
-robot = Robot(3, 10, motor_l, motor_r, encoder_l, encoder_r)
+wheel_radius = 2.26
+robot = Robot(wheel_radius, 10, motor_l, motor_r, encoder_l, encoder_r)
 # Will drive forward for 10 second
 v_desired = 5 # cm per second
 robot.drive_forward_for_time(10, v_desired)
