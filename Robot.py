@@ -2,6 +2,7 @@ import time
 import numpy as np
 import gpiozero
 import queue
+import math
 
 class BaseRobot:
     def __init__(self, wheel_radius, wheel_sep, motor_l, motor_r, rotary_encoder_l, rotary_encoder_r, pipe=None):
@@ -37,6 +38,7 @@ class BaseRobot:
         #print(motor.PWM)
         motor.PWM.value = duty_cycle
         motor.DIR.value = dir
+        print("Duty cycle: " + str(duty_cycle))
 
     def get_encoder_angular_vel(self, encoder, dt, previous_steps, gear_ratio):
         # might need to change to accomodate gear ratio
@@ -55,21 +57,20 @@ class BaseRobot:
     # At the end of a given time step, update the 'pose', essentially update the
     # internally stored position of the robot.
     def pose_update(self, duty_cycle_l, duty_cycle_r, dir_l, dir_r):
-        #print("Left duty cycle: " + str(duty_cycle_l))
-        #print("Right duty cycle: " + str(duty_cycle_r))
-        #duty_cycle_r = 0.5
-        #duty_cycle_l = 0.5
-        #dir_l = 0
-        #dir_r = 0
+       # duty_cycle_l = 0.5
+       # duty_cycle_r = 0.5
+       # dir_r = 0
+       # dir_l = 0
+        
         dt = self.dt
         self.motor_drive(self.motor_l, duty_cycle_l, dir_l) # drive left motor
         self.motor_drive(self.motor_r, duty_cycle_r, dir_r) # drive right motor
+        print("Left Direction: " + str(dir_l))
+        print("Right Direction: " + str(dir_r))
 
         self.wl, self.previous_steps_l = self.get_encoder_angular_vel(self.encoder_l, dt, self.previous_steps_l, self.gear_ratio_l) # get right motor angular vel
-        self.wl = -self.wl # angular velocity value is backwards, invert to make forwards
         self.wr, self.previous_steps_r = self.get_encoder_angular_vel(self.encoder_r, dt, self.previous_steps_r, self.gear_ratio_r) # get left motor angular vel
-        #self.wr = -self.wr
-
+        self.wl = -self.wl # angular velocity value is backwards, invert to make forwards
         v, w = self.base_velocity() # get the base velocity from wheel rotations
 
         self.x = self.x + dt*v*np.cos(self.th)
@@ -87,13 +88,15 @@ class BaseRobot:
     def drive(self, v_desired, w_desired):
         wl_desired = v_desired/self.wheel_radius + self.wheel_sep*w_desired/2
         wr_desired = v_desired/self.wheel_radius - self.wheel_sep*w_desired/2
-
+        
         #wl_desired = 5
         #wr_desired = 5
 
+
+
         duty_cycle_l,self.e_sum_l = self.p_control(wl_desired,self.wl,self.e_sum_l)
         duty_cycle_r,self.e_sum_r = self.p_control(wr_desired,self.wr,self.e_sum_r)
-
+        
         # call pose update with the duty cycle. we reparameterise the duty cycle from -1 to 1 into a 0 to 1 with a single
         # flag for direction.
         self.pose_update(abs(duty_cycle_l), abs(duty_cycle_r), int((np.sign(-duty_cycle_l)+1)/2),int((np.sign(-duty_cycle_r)+1)/2)) # last two converts the sign into a direction (0 or 1)
@@ -105,24 +108,31 @@ class BaseRobot:
         print("Rotational velocity of right wheel: " + str(self.wr))
         print("Forward velocity: " + str(self.base_velocity()[0]))
         print("Rotational velocity: " + str(self.base_velocity()[1]))
+       # print("V_desired: " + str(v_desired))
+       # print("w_desired: " + str(w_desired))
         time.sleep(self.dt) # sleep after each drive call so we only drive the robot in increments
 
     # utility function for the drive function, calculates required duty cycle for
     # a desired step velocity and minimizes accumulated error.
     def p_control(self,w_wheel_desired,w_wheel_measured,e_sum):
-        kp = 1
-        ki = 0.25
-
+        kp = 0.1
+        ki = 0.01
+	
+	
         duty_cycle = min(max(-0.96,kp*(w_wheel_desired-w_wheel_measured) + ki*e_sum),0.96)
 
         e_sum = e_sum + (w_wheel_desired-w_wheel_measured)
-
+        
+       # print("Left duty cycle: " + str(duty_cycle))
+      #  print("Right duty cycle: " + str(duty_cycle_r))
+        
         return duty_cycle, e_sum
 
     # immediately arrest the motion of the robot
     def stop(self):
         self.motor_l.PWM.value = 0
         self.motor_r.PWM.value = 0
+        print("hello you called stop")
 
     def check_death(self):
         if self.pipe.poll():
@@ -149,7 +159,7 @@ class Robot (BaseRobot):
         start_time = time.time()
         while (time.time() - start_time) < t:
             self.drive(v_desired, 0)
-    # drive_forward_for_distance(self, distance, v_desired)
+    # drive_forward_for_distance(self, distance, target_duty_cycle=1)
     # Defintion: will drive the robot forward in a straight line for the specified distance
     def drive_forward_for_distance(self, distance, v_desired):
         current_distance = 0
@@ -157,13 +167,13 @@ class Robot (BaseRobot):
             self.drive(v_desired, 0)
             current_distance += self.base_velocity()[0]*self.dt
             #current_distance += v_desired*self.dt #TEST EDIT
-    # drive_rotate_for_time(self, time, direction, v_desired)
+    # drive_rotate_for_time(self, time, direction, target_duty_cycle=1)
     # Defintion: will rotate the robot in the specified direction for an amount of time
     def drive_rotate_for_time(self, t, w_desired):
         start_time = time.time()
         while (time.time() - start_time) < t:
             self.drive(0, w_desired)
-    # drive_rotate_for_angle(self, angle, v_desired)
+    # drive_rotate_for_angle(self, angle, target_duty_cycle=1)
     # Defintion: will rotate the robot by the specified angle
     def drive_rotate_for_angle(self, angle, w_desired):
         current_angle = 0
@@ -171,7 +181,7 @@ class Robot (BaseRobot):
             self.drive(0, w_desired)
             current_angle += self.base_velocity()[1]*self.dt
             #current_angle += w_desired*self.dt #TEST EDIT
-    # drive_rotate_to_angle(self, angle, v_desired)
+    # drive_rotate_to_angle(self, angle, target_duty_cycle=1)
     # Defintion: will rotate the robot to a specified global angle. angle does not need to be between 0 and 2 pi
     # function will treat angles outside this range as though they are
     def drive_rotate_to_angle(self, angle, w_desired):
