@@ -176,7 +176,7 @@ class Robot (BaseRobot):
     # Defintion: will drive the robot forward in a straight line for the specified distance
     def drive_forward_for_distance(self, distance, v_desired):
         current_distance = 0
-        while current_distance < distance:
+        while abs(current_distance) < distance:
             self.drive(v_desired, 0)
             current_distance += self.base_velocity()[0]*self.dt
             #current_distance += v_desired*self.dt #TEST EDIT

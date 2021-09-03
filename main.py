@@ -55,16 +55,16 @@ def CollisionAvoid(pipe, rob_loc):
 
 # Thread for checking the ultrasonic sensor and reporting collisions
 def CheckUltrasonicSensor(pipe):
-    #sensor = DistanceSensor(echo=18,trigger=17) # echo and trigger on pins 18 and 17
+    sensor = DistanceSensor(echo=18,trigger=17) # echo and trigger on pins 18 and 17
     dt = 0.01 # check every hundredth of a second for a collision
     time_started = time.time()
     while True:
-        # if sensor.distance < 0.02:
-        #     # if we are less than 2 centimeteres away, a collision is about to occur, we report to the main threads
-        #     pipe.send("Collision")
-        # for testing
-        if time.time()-time_started < 1.01 and time.time()-time_started > 0.99:
+        if sensor.distance < 0.05:
+            # if we are less than 5 centimeteres away, a collision is about to occur, we report to the main threads
             pipe.send("Collision")
+        # for testing
+        # if time.time()-time_started < 1.01 and time.time()-time_started > 0.99:
+        #     pipe.send("Collision")
         time.sleep(dt)
 
 ## Main thread here
@@ -105,7 +105,7 @@ if __name__ == '__main__':
                 # the thread has finished it's business, we should finish up now
                 if collision_avoiding:
                     # start drive to goal process
-                    driving_process.join()
+                    driving_process.join() 
                     driving_pipe_PARENT, driving_pipe_CHILD = Pipe()
                     driving_process = Process(target=DriveToGoal, args=(goal_x,goal_y,driving_pipe_CHILD, (x,y,th)))
                     driving_process.start()
@@ -114,24 +114,28 @@ if __name__ == '__main__':
                 else:
                     done = True
         if sensor_pipe_PARENT.poll():
+            sensor_pipe_PARENT.recv()
             # Sensor thread has detected a collision
-            print("COLLIDED")
-            driving_pipe_PARENT.send("Die")
-            terminated = False
-            while not terminated:
-                try:
-                    driving_pipe_PARENT.recv()
-                except ConnectionResetError:
-                    terminated = True
-            driving_process.terminate()
-            driving_process.join()
-            print("Terminated")
-            # Start the new driving process (get around the obstacle)
-            collision_avoiding = True
-            driving_pipe_PARENT, driving_pipe_CHILD = Pipe()
-            driving_process = Process(target=CollisionAvoid, args=(driving_pipe_CHILD, (x,y,th)))
-            driving_process.start()
-            driving_pipe_CHILD.close()
+            if not collision_avoiding:
+                print("COLLIDED")
+                driving_pipe_PARENT.send("Die")
+                terminated = False
+                while not terminated:
+                    try:
+                        driving_pipe_PARENT.recv()
+                    except ConnectionResetError:
+                        terminated = True
+                    except EOFError:
+                        terminated = True
+                driving_process.terminate()
+                driving_process.join()
+                print("Terminated")
+                # Start the new driving process (get around the obstacle)
+                collision_avoiding = True
+                driving_pipe_PARENT, driving_pipe_CHILD = Pipe()
+                driving_process = Process(target=CollisionAvoid, args=(driving_pipe_CHILD, (x,y,th)))
+                driving_process.start()
+                driving_pipe_CHILD.close()
     print("Done with all")
     # end the sensing thread
     sensor_process.terminate()
