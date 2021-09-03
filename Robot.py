@@ -112,6 +112,19 @@ class BaseRobot:
        # print("w_desired: " + str(w_desired))
         time.sleep(self.dt) # sleep after each drive call so we only drive the robot in increments
 
+    # let the robot rest and reset the error values before attempting a new driving action
+    def rest(self):
+        self.e_sum_l = 0
+        self.e_sum_r = 0
+
+        self.pose_update(0, 0, 0, 0) # last two converts the sign into a direction (0 or 1)
+        # Push the change to the robot in this thread to the queue so the main thread may update it's representation
+        if self.pipe is not None:
+            self.push_to_pipe()
+            self.check_death()
+        time.sleep(self.dt) # sleep after each drive call so we only drive the robot in increments
+
+
     # utility function for the drive function, calculates required duty cycle for
     # a desired step velocity and minimizes accumulated error.
     def p_control(self,w_wheel_desired,w_wheel_measured,e_sum):
@@ -188,6 +201,7 @@ class Robot (BaseRobot):
         alpha = angle % (2*np.pi) - self.th % (2*np.pi) # convert both to angles between 0 and 2 pi
         if (abs(alpha) > np.pi):
             alpha = 2*np.pi - abs(alpha)
+        print(alpha)
         self.drive_rotate_for_angle(alpha, w_desired)
     # drive_to_point(self, dest_x, dest_y)
     # Defintion: will drive the robot to the destination location, in a straight line
@@ -196,8 +210,14 @@ class Robot (BaseRobot):
         delta_y = dest_y - self.y
         angle = np.arctan2(delta_y,delta_x)
         self.drive_rotate_to_angle(angle,w_desired)
+        print("hey")
+        self.rest_for_time(0.5)
         distance = np.sqrt(delta_x**2 + delta_y**2)
         self.drive_forward_for_distance(distance,v_desired)
+    def rest_for_time(self, t):
+        start_time = time.time()
+        while (time.time() - start_time) < t:
+            self.rest()
 
 class Motor:
     def __init__(self, pwm_output, direction_output):

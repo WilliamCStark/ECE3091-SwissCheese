@@ -9,9 +9,10 @@ import queue
 from gpiozero import DistanceSensor
 
 # For testing on a PC that isn't the PI. Make sure to comment out when running on pi
-gpiozero.Device.pin_factory = MockFactory(pin_class=MockPWMPin)
+#gpiozero.Device.pin_factory = MockFactory(pin_class=MockPWMPin)
 
-#sensor = DistanceSensor(echo=18,trigger=17) # echo and trigger on pins 18 and 17
+wheel_radius = 2.26 # chuck in actual wheel_radius
+wheel_sep = 10 # chuck in actual wheel separation
 
 # Thread for driving to a goal location
 def DriveToGoal(x, y, pipe, rob_loc):
@@ -20,13 +21,13 @@ def DriveToGoal(x, y, pipe, rob_loc):
     motor_r = Motor(gpiozero.PWMOutputDevice(pin=13,active_high=True,initial_value=0,frequency=10000), gpiozero.OutputDevice(pin=6))# using GPIO 13 for PWM, GPIO 6 for direction
     encoder_l = gpiozero.RotaryEncoder(a=22, b=27,max_steps=100000)  # using GPIO 22 and GPIO 27 for a and b pins from rotary encoder
     encoder_r = gpiozero.RotaryEncoder(a=23, b=24,max_steps=100000)  # using GPIO 23 and GPIO 24 for a and b pins from rotary encoder
-    robot = Robot(3, 10, motor_l, motor_r, encoder_l, encoder_r)
+    robot = Robot(wheel_radius, wheel_sep, motor_l, motor_r, encoder_l, encoder_r)
     # set it to the correct location
     robot.x = rob_loc[0]
     robot.y = rob_loc[1]
     robot.th = rob_loc[2]
-    v_desired = 5 # move at 5cm per second
-    w_desired = np.pi/3 # rotate a half turn in 3 seconds
+    v_desired = 12 # chuck in the v_desired
+    w_desired = np.pi/3 # chuck in desired rotational velocity
     count = 0
     robot.pipe=pipe
     robot.drive_to_point(x, y, v_desired, w_desired)
@@ -34,17 +35,18 @@ def DriveToGoal(x, y, pipe, rob_loc):
 
 # Thread for checking the ultrasonic sensor and reporting collisions
 def CheckUltrasonicSensor(pipe):
-    dt = 0.001 # check every hundredth of a second for a collision
+    sensor = DistanceSensor(echo=18,trigger=17) # echo and trigger on pins 18 and 17
+    dt = 0.01 # check every hundredth of a second for a collision
     time_started = time.time()
     while True:
-        # if sensor.distance < 0.05:
-        #     # if we are less than 5 centimeteres away, a collision is about to occur, we report to the main threads
-        #     pipe.send("Collision")
-        # for testing
-        if time.time()-time_started < 1.01 and time.time()-time_started > 0.99:
+        if sensor.distance < 0.02:
+            # if we are less than 2 centimeteres away, a collision is about to occur, we report to the main threads
             pipe.send("Collision")
-            break
-        time.sleep(dt)
+        # for testing
+        # if time.time()-time_started < 1.01 and time.time()-time_started > 0.99:
+        #     pipe.send("Collision")
+        #     break
+        # time.sleep(dt)
 
 ## Main thread here
 if __name__ == '__main__':
@@ -52,15 +54,18 @@ if __name__ == '__main__':
     x, y, th = 0, 0, 0
     goal_x = 30 # at 30cm away from origin in x-direction
     goal_y = 30 # at 30cm away from origin in y-direction
+    # Set up the drive to goal process
     dtg_pipe_PARENT, dtg_pipe_CHILD = Pipe()
     drive_to_goal_process = Process(target=DriveToGoal, args=(goal_x,goal_y,dtg_pipe_CHILD, (x,y,th)))
     drive_to_goal_process.start()
     dtg_pipe_CHILD.close()
+    # Set up the sensor process
     sensor_pipe_PARENT, sensor_pipe_CHILD = Pipe()
     sensor_process = Process(target=CheckUltrasonicSensor, args=(sensor_pipe_CHILD,))
     sensor_process.start()
     sensor_pipe_CHILD.close()
     done = False
+    # Run this main process which will drive the robot to the goal, ending either when it reaches the goal, or detects a collision
     while not done:
         if dtg_pipe_PARENT.poll():
             # checking if we have any data from driving thread
