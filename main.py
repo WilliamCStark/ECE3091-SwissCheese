@@ -9,7 +9,7 @@ import queue
 from gpiozero import DistanceSensor
 
 # For testing on a PC that isn't the PI. Make sure to comment out when running on pi
-gpiozero.Device.pin_factory = MockFactory(pin_class=MockPWMPin)
+#gpiozero.Device.pin_factory = MockFactory(pin_class=MockPWMPin)
 
 wheel_radius = 2.26 # chuck in actual wheel_radius
 wheel_sep = 5 # chuck in actual wheel separation
@@ -27,7 +27,7 @@ def DriveToGoal(x, y, pipe, rob_loc):
     robot.y = rob_loc[1]
     robot.th = rob_loc[2]
     v_desired = 12 # chuck in the v_desired
-    w_desired = np.pi/3 # chuck in desired rotational velocity
+    w_desired = 5 # chuck in desired rotational velocity
     robot.pipe=pipe
     robot.drive_to_point(x, y, v_desired, w_desired)
     pipe.close()
