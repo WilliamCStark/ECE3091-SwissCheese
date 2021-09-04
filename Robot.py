@@ -104,12 +104,15 @@ class BaseRobot:
         if self.pipe is not None:
             self.push_to_pipe()
             self.check_death()
-        print("Rotational velocity of left wheel: " + str(self.wl))
-        print("Rotational velocity of right wheel: " + str(self.wr))
-        print("Forward velocity: " + str(self.base_velocity()[0]))
-        print("Rotational velocity: " + str(self.base_velocity()[1]))
+        # print("Rotational velocity of left wheel: " + str(self.wl))
+        # print("Rotational velocity of right wheel: " + str(self.wr))
+        # print("Forward velocity: " + str(self.base_velocity()[0]))
+        # print("Rotational velocity: " + str(self.base_velocity()[1]))
        # print("V_desired: " + str(v_desired))
        # print("w_desired: " + str(w_desired))
+        # print("x location is: " + str(self.x))
+        # print("y location is: " + str(self.y))
+        # print("th location is: " + str(self.th))
         time.sleep(self.dt) # sleep after each drive call so we only drive the robot in increments
 
     # let the robot rest and reset the error values before attempting a new driving action
@@ -201,7 +204,6 @@ class Robot (BaseRobot):
         alpha = angle % (2*np.pi) - self.th % (2*np.pi) # convert both to angles between 0 and 2 pi
         if (abs(alpha) > np.pi):
             alpha = 2*np.pi - abs(alpha)
-        print(alpha)
         self.drive_rotate_for_angle(alpha, w_desired)
     # drive_to_point(self, dest_x, dest_y)
     # Defintion: will drive the robot to the destination location, in a straight line
@@ -210,7 +212,6 @@ class Robot (BaseRobot):
         delta_y = dest_y - self.y
         angle = np.arctan2(delta_y,delta_x)
         self.drive_rotate_to_angle(angle,w_desired)
-        print("hey")
         self.rest_for_time(0.5)
         distance = np.sqrt(delta_x**2 + delta_y**2)
         self.drive_forward_for_distance(distance,v_desired)

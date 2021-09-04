@@ -45,6 +45,7 @@ def CollisionAvoid(pipe, rob_loc):
     robot.th = rob_loc[2]
     v_desired = 12 # chuck in the v_desired
     w_desired = 5 # chuck in desired rotational velocity
+    robot.rest_for_time(0.5)
     robot.drive_forward_for_distance(10, -v_desired)
     robot.rest_for_time(0.5)
     robot.drive_rotate_for_angle(np.pi/2, w_desired)
