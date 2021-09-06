@@ -29,6 +29,12 @@ def DriveToGoal(x, y, pipe, rob_loc):
     v_desired = 12 # chuck in the v_desired
     w_desired = 5 # chuck in desired rotational velocity
     robot.pipe=pipe
+    print("Driving to point")
+    print("x: " + str(robot.x))
+    print("y: " + str(robot.y))
+    print("th: " + str(robot.th))
+    print("goal_x: " + str(x))
+    print("goal_y: " + str(y))
     robot.drive_to_point(x, y, v_desired, w_desired)
     pipe.close()
 
@@ -45,6 +51,7 @@ def CollisionAvoid(pipe, rob_loc):
     robot.th = rob_loc[2]
     v_desired = 12 # chuck in the v_desired
     w_desired = 5 # chuck in desired rotational velocity
+    robot.pipe = pipe
     robot.rest_for_time(0.5)
     robot.drive_forward_for_distance(10, -v_desired)
     robot.rest_for_time(0.5)
@@ -103,7 +110,7 @@ if __name__ == '__main__':
                 y = msg[1]
                 th = msg[2]
             except EOFError:
-                # the thread has finished it's business, we should finish up now
+                # the thread has finished it's business, we are either avoding collisions, or 
                 if collision_avoiding:
                     # start drive to goal process
                     driving_process.join() 

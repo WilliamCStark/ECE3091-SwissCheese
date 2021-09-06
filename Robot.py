@@ -38,7 +38,7 @@ class BaseRobot:
         #print(motor.PWM)
         motor.PWM.value = duty_cycle
         motor.DIR.value = dir
-        print("Duty cycle: " + str(duty_cycle))
+        # print("Duty cycle: " + str(duty_cycle))
 
     def get_encoder_angular_vel(self, encoder, dt, previous_steps, gear_ratio):
         # might need to change to accomodate gear ratio
@@ -65,8 +65,8 @@ class BaseRobot:
         dt = self.dt
         self.motor_drive(self.motor_l, duty_cycle_l, dir_l) # drive left motor
         self.motor_drive(self.motor_r, duty_cycle_r, dir_r) # drive right motor
-        print("Left Direction: " + str(dir_l))
-        print("Right Direction: " + str(dir_r))
+        # print("Left Direction: " + str(dir_l))
+        # print("Right Direction: " + str(dir_r))
 
         self.wl, self.previous_steps_l = self.get_encoder_angular_vel(self.encoder_l, dt, self.previous_steps_l, self.gear_ratio_l) # get right motor angular vel
         self.wr, self.previous_steps_r = self.get_encoder_angular_vel(self.encoder_r, dt, self.previous_steps_r, self.gear_ratio_r) # get left motor angular vel
@@ -193,7 +193,7 @@ class Robot (BaseRobot):
     # Defintion: will rotate the robot by the specified angle
     def drive_rotate_for_angle(self, angle, w_desired):
         current_angle = 0
-        while current_angle < angle:
+        while abs(current_angle) < angle:
             self.drive(0, w_desired)
             current_angle += self.base_velocity()[1]*self.dt
             #current_angle += w_desired*self.dt #TEST EDIT
@@ -202,9 +202,10 @@ class Robot (BaseRobot):
     # function will treat angles outside this range as though they are
     def drive_rotate_to_angle(self, angle, w_desired):
         alpha = angle % (2*np.pi) - self.th % (2*np.pi) # convert both to angles between 0 and 2 pi
+        print("alpha is: " + str(alpha))
         if (abs(alpha) > np.pi):
             alpha = 2*np.pi - abs(alpha)
-        self.drive_rotate_for_angle(alpha, w_desired)
+        self.drive_rotate_for_angle(abs(alpha), np.sign(alpha) * w_desired)
     # drive_to_point(self, dest_x, dest_y)
     # Defintion: will drive the robot to the destination location, in a straight line
     def drive_to_point(self, dest_x, dest_y, v_desired, w_desired):
