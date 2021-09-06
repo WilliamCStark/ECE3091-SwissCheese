@@ -27,14 +27,14 @@ def DriveToGoal(x, y, pipe, rob_loc):
     robot.y = rob_loc[1]
     robot.th = rob_loc[2]
     v_desired = 12 # chuck in the v_desired
-    w_desired = 5 # chuck in desired rotational velocity
+    w_desired = 5# chuck in desired rotational velocity
     robot.pipe=pipe
-    print("Driving to point")
+    print("driving to that god damn point yeeet")
     print("x: " + str(robot.x))
-    print("y: " + str(robot.y))
+    print("y " + str(robot.y))
     print("th: " + str(robot.th))
-    print("goal_x: " + str(x))
-    print("goal_y: " + str(y))
+    print("goal x: " + str(x))
+    print("goal y: " + str(y))
     robot.drive_to_point(x, y, v_desired, w_desired)
     pipe.close()
 
@@ -50,14 +50,14 @@ def CollisionAvoid(pipe, rob_loc):
     robot.y = rob_loc[1]
     robot.th = rob_loc[2]
     v_desired = 12 # chuck in the v_desired
-    w_desired = 5 # chuck in desired rotational velocity
+    w_desired = 1 # chuck in desired rotational velocity
     robot.pipe = pipe
     robot.rest_for_time(0.5)
     robot.drive_forward_for_distance(10, -v_desired)
     robot.rest_for_time(0.5)
-    robot.drive_rotate_for_angle(np.pi/2, w_desired)
+    robot.drive_rotate_for_angle(np.pi/5, w_desired) #tune to be smaller
     robot.rest_for_time(0.5)
-    robot.drive_forward_for_distance(20, v_desired)
+    robot.drive_forward_for_distance(20, v_desired) #bigger
     robot.rest_for_time(0.5)
     pipe.close()
 
@@ -67,7 +67,7 @@ def CheckUltrasonicSensor(pipe):
     dt = 0.01 # check every hundredth of a second for a collision
     time_started = time.time()
     while True:
-        if sensor.distance < 0.05:
+        if sensor.distance < 0.07:
             # if we are less than 5 centimeteres away, a collision is about to occur, we report to the main threads
             pipe.send("Collision")
         # for testing
@@ -110,10 +110,10 @@ if __name__ == '__main__':
                 y = msg[1]
                 th = msg[2]
             except EOFError:
-                # the thread has finished it's business, we are either avoding collisions, or 
+                # the thread has finished it's business, we are either avoding collisions, or
                 if collision_avoiding:
                     # start drive to goal process
-                    driving_process.join() 
+                    driving_process.join()
                     driving_pipe_PARENT, driving_pipe_CHILD = Pipe()
                     driving_process = Process(target=DriveToGoal, args=(goal_x,goal_y,driving_pipe_CHILD, (x,y,th)))
                     driving_process.start()

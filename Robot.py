@@ -38,7 +38,7 @@ class BaseRobot:
         #print(motor.PWM)
         motor.PWM.value = duty_cycle
         motor.DIR.value = dir
-        # print("Duty cycle: " + str(duty_cycle))
+        #print("Duty cycle: " + str(duty_cycle))
 
     def get_encoder_angular_vel(self, encoder, dt, previous_steps, gear_ratio):
         # might need to change to accomodate gear ratio
@@ -61,7 +61,7 @@ class BaseRobot:
        # duty_cycle_r = 0.5
        # dir_r = 0
        # dir_l = 0
-        
+
         dt = self.dt
         self.motor_drive(self.motor_l, duty_cycle_l, dir_l) # drive left motor
         self.motor_drive(self.motor_r, duty_cycle_r, dir_r) # drive right motor
@@ -88,7 +88,7 @@ class BaseRobot:
     def drive(self, v_desired, w_desired):
         wl_desired = v_desired/self.wheel_radius + self.wheel_sep*w_desired/2
         wr_desired = v_desired/self.wheel_radius - self.wheel_sep*w_desired/2
-        
+
         #wl_desired = 5
         #wr_desired = 5
 
@@ -96,7 +96,7 @@ class BaseRobot:
 
         duty_cycle_l,self.e_sum_l = self.p_control(wl_desired,self.wl,self.e_sum_l)
         duty_cycle_r,self.e_sum_r = self.p_control(wr_desired,self.wr,self.e_sum_r)
-        
+
         # call pose update with the duty cycle. we reparameterise the duty cycle from -1 to 1 into a 0 to 1 with a single
         # flag for direction.
         self.pose_update(abs(duty_cycle_l), abs(duty_cycle_r), int((np.sign(-duty_cycle_l)+1)/2),int((np.sign(-duty_cycle_r)+1)/2)) # last two converts the sign into a direction (0 or 1)
@@ -133,15 +133,15 @@ class BaseRobot:
     def p_control(self,w_wheel_desired,w_wheel_measured,e_sum):
         kp = 0.1
         ki = 0.01
-	
-	
+
+
         duty_cycle = min(max(-0.96,kp*(w_wheel_desired-w_wheel_measured) + ki*e_sum),0.96)
 
         e_sum = e_sum + (w_wheel_desired-w_wheel_measured)
-        
+
        # print("Left duty cycle: " + str(duty_cycle))
       #  print("Right duty cycle: " + str(duty_cycle_r))
-        
+
         return duty_cycle, e_sum
 
     # immediately arrest the motion of the robot
@@ -201,11 +201,15 @@ class Robot (BaseRobot):
     # Defintion: will rotate the robot to a specified global angle. angle does not need to be between 0 and 2 pi
     # function will treat angles outside this range as though they are
     def drive_rotate_to_angle(self, angle, w_desired):
-        alpha = angle % (2*np.pi) - self.th % (2*np.pi) # convert both to angles between 0 and 2 pi
+        if (angle < 0):
+            angle_limited = angle % (-2*np.pi)
+        else:
+            angle_limited = angle % (2*np.pi)
+        alpha = angle_limited - self.th % (2*np.pi) # convert both to angles between 0 and 2 pi
         print("alpha is: " + str(alpha))
         if (abs(alpha) > np.pi):
             alpha = 2*np.pi - abs(alpha)
-        self.drive_rotate_for_angle(abs(alpha), np.sign(alpha) * w_desired)
+        self.drive_rotate_for_angle(abs(alpha), np.sign(alpha)*w_desired)
     # drive_to_point(self, dest_x, dest_y)
     # Defintion: will drive the robot to the destination location, in a straight line
     def drive_to_point(self, dest_x, dest_y, v_desired, w_desired):
@@ -216,6 +220,8 @@ class Robot (BaseRobot):
         self.rest_for_time(0.5)
         distance = np.sqrt(delta_x**2 + delta_y**2)
         self.drive_forward_for_distance(distance,v_desired)
+        self.rest_for_time(0.5)
+        self.drive_rotate_to_angle(0,w_desired)
     def rest_for_time(self, t):
         start_time = time.time()
         while (time.time() - start_time) < t:
