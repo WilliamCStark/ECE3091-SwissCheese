@@ -5,7 +5,7 @@ import queue
 import math
 
 class BaseRobot:
-    def __init__(self, wheel_radius, wheel_sep, motor_l, motor_r, rotary_encoder_l, rotary_encoder_r, pipe=None):
+    def __init__(self, wheel_radius, wheel_sep, motor_l, motor_r, rotary_encoder_l, rotary_encoder_r, pipe=None, dt=0.01):
         self.x = 0.0 # y-pos (in cm)
         self.y = 0.0 # x-pos (in cm)
         self.th = 0.0 # orientation (in radians)
@@ -25,7 +25,7 @@ class BaseRobot:
 
         self.previous_steps_l = rotary_encoder_l.steps
         self.previous_steps_r = rotary_encoder_r.steps
-        self.dt = 0.01 # the time to sleep after applying a motor movement
+        self.dt = dt # the time to sleep after applying a motor movement
 
         self.e_sum_l = 0
         self.e_sum_r = 0
@@ -164,8 +164,8 @@ class BaseRobot:
 
 
 class Robot (BaseRobot):
-    def __init__(self, wheel_radius, wheel_sep, motor_l, motor_r, rotary_encoder_l, rotary_encoder_r, q=None):
-        super().__init__(wheel_radius, wheel_sep, motor_l, motor_r, rotary_encoder_l, rotary_encoder_r, q)
+    def __init__(self, wheel_radius, wheel_sep, motor_l, motor_r, rotary_encoder_l, rotary_encoder_r, pipe=None):
+        super().__init__(wheel_radius, wheel_sep, motor_l, motor_r, rotary_encoder_l, rotary_encoder_r, pipe)
     ###############################################################################################
     ### Below are functions that complete some basic movement of the robot
     ################################################################################################
@@ -231,3 +231,40 @@ class Motor:
     def __init__(self, pwm_output, direction_output):
         self.PWM = pwm_output
         self.DIR = direction_output
+
+class TentaclePlanner:
+    def __init__(self,obstacles,dt=0.1,steps=5,alpha=1,beta=0.1):
+        
+        self.dt = dt
+        self.steps = steps
+        # Tentacles are possible trajectories to follow
+        self.tentacles = [(0.0,1.0),(0.0,-1.0),(0.1,1.0),(0.1,-1.0),(0.1,0.5),(0.1,-0.5),(0.1,0.0),(0.0,0.0)]
+        
+        self.alpha = alpha
+        self.beta = beta
+        
+        #self.obstacles = obstacles
+    # Play a trajectory and evaluate where you'd end up
+    def roll_out(self,v,w,goal_x,goal_y,goal_th,x,y,th):
+        
+        for j in range(self.steps):
+        
+            x = x + self.dt*v*np.cos(th)
+            y = y + self.dt*v*np.sin(th)
+            th = (th + w*self.dt)
+        
+        e_th = goal_th-th
+        e_th = np.arctan2(np.sin(e_th),np.cos(e_th))
+        
+        return self.alpha*((goal_x-x)**2 + (goal_y-y)**2) + self.beta*(e_th**2)
+
+    # Choose trajectory that will get you closest to the goal
+    def plan(self,goal_x,goal_y,goal_th,x,y,th):
+        
+        costs =[]
+        for v,w in self.tentacles:
+            costs.append(self.roll_out(v,w,goal_x,goal_y,goal_th,x,y,th))
+        
+        best_idx = np.argmin(costs)
+        
+        return self.tentacles[best_idx]
