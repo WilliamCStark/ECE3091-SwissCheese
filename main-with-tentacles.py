@@ -34,6 +34,9 @@ def DriveToGoal(x, y, pipe, rob_loc):
     planner = TentaclePlanner(dt=dt)
     while True:
         v, w = planner.plan(x,y,0,robot.x,robot.y,robot.th)
+        # rescale from -1 to 1 to -max_v_desired to max_v_desired
+        v = max_v_desired*v
+        w = max_w_desired*w
         robot.drive(v,w) # this function sleeps for the sleeps time dt
 
 # def CollisionAvoid(pipe, rob_loc):
@@ -101,24 +104,15 @@ if __name__ == '__main__':
             last_time_printed = time.time()
         if driving_pipe_PARENT.poll():
             # checking if we have any data from driving thread
-            try:
-                msg = driving_pipe_PARENT.recv()
-                # update the robot with the updated robot object properties
-                x = msg[0]
-                y = msg[1]
-                th = msg[2]
-            except EOFError:
-                # the thread has finished it's business, we are either avoding collisions, or
-                if collision_avoiding:
-                    # start drive to goal process
-                    driving_process.join()
-                    driving_pipe_PARENT, driving_pipe_CHILD = Pipe()
-                    driving_process = Process(target=DriveToGoal, args=(goal_x,goal_y,driving_pipe_CHILD, (x,y,th)))
-                    driving_process.start()
-                    driving_pipe_CHILD.close()
-                    collision_avoiding = False
-                else:
-                    done = True
+            msg = driving_pipe_PARENT.recv()
+            # update the robot with the updated robot object properties
+            x = msg[0]
+            y = msg[1]
+            th = msg[2]
+            dist_to_goal = np.sqrt((x-goal_x)**2 +  (y-goal_y)**2)
+            # stop navigating to goal if we are less than 1 cm away from it
+            if dist_to_goal < 0.01:
+                done = True
         if sensor_pipe_PARENT.poll():
             sensor_pipe_PARENT.recv()
             # Sensor thread has detected a collision
@@ -143,6 +137,9 @@ if __name__ == '__main__':
                 driving_process.start()
                 driving_pipe_CHILD.close()
     print("Done with all")
+    # end the driving thread
+    driving_process.terminate()
+    driving_process.join()
     # end the sensing thread
     sensor_process.terminate()
     sensor_process.join()

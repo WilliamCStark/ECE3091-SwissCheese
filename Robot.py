@@ -164,7 +164,7 @@ class BaseRobot:
 
 
 class Robot (BaseRobot):
-    def __init__(self, wheel_radius, wheel_sep, motor_l, motor_r, rotary_encoder_l, rotary_encoder_r, pipe=None):
+    def __init__(self, wheel_radius, wheel_sep, motor_l, motor_r, rotary_encoder_l, rotary_encoder_r, pipe=None, dt=dt):
         super().__init__(wheel_radius, wheel_sep, motor_l, motor_r, rotary_encoder_l, rotary_encoder_r, pipe)
     ###############################################################################################
     ### Below are functions that complete some basic movement of the robot
@@ -233,12 +233,12 @@ class Motor:
         self.DIR = direction_output
 
 class TentaclePlanner:
-    def __init__(self,obstacles,dt=0.1,steps=5,alpha=1,beta=0.1):
+    def __init__(self,dt=0.1,steps=5,alpha=1,beta=0.1, max_v=12, max_w=1):
         
         self.dt = dt
         self.steps = steps
         # Tentacles are possible trajectories to follow
-        self.tentacles = [(0.0,1.0),(0.0,-1.0),(0.1,1.0),(0.1,-1.0),(0.1,0.5),(0.1,-0.5),(0.1,0.0),(0.0,0.0)]
+        self.tentacles = [(0.0,max_w),(0.0,-max_w),(max_v,max_w),(max_v,-max_w),(max_v,max_w*0.5),(max_v,-max_w*0.5),(max_v,0.0),(0.0,0.0)]
         
         self.alpha = alpha
         self.beta = beta
