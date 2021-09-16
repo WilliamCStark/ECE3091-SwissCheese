@@ -244,9 +244,9 @@ class TentaclePlanner:
         self.beta = beta
 
         # add in some state variables to track collisions
-        self.sensor_front_distance = 0 # in cm
-        self.sensor_left_distance = 0 # in cm
-        self.sensor_right_distance = 0 # in cm
+        self.sensor_front_distance = 100 # in cm
+        self.sensor_left_distance = 100 # in cm
+        self.sensor_right_distance = 100 # in cm
         
         #self.obstacles = obstacles
     # Play a trajectory and evaluate where you'd end up
@@ -260,24 +260,16 @@ class TentaclePlanner:
             # Choosing which tentacles to ignore based on collisions
             def dist(x,y,obs_x,obs_y):
                 return np.sqrt((x-obs_x)**2+(y-obs_y)**2)
-            # Now check if tentacle is a front going tentacle
-            obstacle_x = x + self.sensor_front_distance*np.math.cos(th)
-            obstacle_y = y + self.sensor_front_distance*np.math.sin(th)
-            # if moving via this tentacle puts us within 10 cm of the obstacle position, don't use it
-            if (dist(x,y,obstacle_x,obstacle_y) < 10):
-                return np.inf
-            # Now check if tentacle is a left going tentacle
-            obstacle_x = x + self.sensor_left_distance*np.math.cos(th-np.pi/2) # our convention is counter-clockwise is negative angle
-            obstacle_y = y + self.sensor_left_distance*np.math.sin(th-np.pi/2)
-            # if moving via this tentacle puts us within 10 cm of the obstacle position, don't use it
-            if (dist(x,y,obstacle_x,obstacle_y) < 10):
-                return np.inf
-            # Now check if tentacle is a right going tentacle
-            obstacle_x = x + self.sensor_right_distance*np.math.cos(th+np.pi/2) # our convention is clockwise is positive angle
-            obstacle_y = y + self.sensor_right_distance*np.math.sin(th+np.pi/2)
-            # if moving via this tentacle puts us within 10 cm of the obstacle position, don't use it
-            if (dist(x,y,obstacle_x,obstacle_y) < 10):
-                return np.inf
+            sensor_distances = [self.sensor_front_distance, self.sensor_left_distance, self.sensor_right_distance]
+            angular_offset = [0, -np.pi/2, np.pi/2]
+            # check each sensor for a possible collision
+            for i in range(len(sensor_distances)):
+                # Now check if this tentacle results in a collision
+                obstacle_x = x + self.sensor_distances[i]*np.math.cos(th+angular_offset[i])
+                obstacle_y = y + self.sensor_distances[i]*np.math.sin(th+angular_offset[i])
+                # if moving via this tentacle puts us within 10 cm of the obstacle position, don't use it
+                if (np.sqrt((x-obstacle_x)**2+(y-obstacle_y)**2) < 10):
+                    return np.inf
                 
         e_th = goal_th-th
         e_th = np.arctan2(np.sin(e_th),np.cos(e_th))
@@ -303,9 +295,6 @@ class TentaclePlanner:
             new_collision_data = True
             data = collisions_pipe.recv()
         if new_collision_data:
-            self.sensor_front = data[0]
             self.sensor_front_distance = data[1]
-            self.sensor_left = data[2]
             self.sensor_left_distance = data[3]
-            self.sensor_right = data[4]
             self.sensor_right_distance = data[5]
