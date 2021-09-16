@@ -244,12 +244,9 @@ class TentaclePlanner:
         self.beta = beta
 
         # add in some state variables to track collisions
-        self.collision_front = False
-        self.collision_front_distance = 0
-        self.collision_left = False
-        self.collision_left_distance = 0
-        self.collision_right = False
-        self.collision_right_distance = 0
+        self.sensor_front_distance = 0 # in cm
+        self.sensor_left_distance = 0 # in cm
+        self.sensor_right_distance = 0 # in cm
         
         #self.obstacles = obstacles
     # Play a trajectory and evaluate where you'd end up
@@ -260,25 +257,27 @@ class TentaclePlanner:
             x = x + self.dt*v*np.cos(th)
             y = y + self.dt*v*np.sin(th)
             th = (th + w*self.dt)
-        
+            # Choosing which tentacles to ignore based on collisions
             def dist(x,y,obs_x,obs_y):
                 return np.sqrt((x-obs_x)**2+(y-obs_y)**2)
-            if self.collision_front:
-                # Now check if tentacle is a front going tentacle
-                obstacle_x = x + self.collision_distance*np.math.cos(th)
-                obstacle_y = y + self.collision_distance*np.math.sin(th)
-                if (dist(x,y,obstacle_x,obstacle_y) < 0.1):
-                    return np.inf
-            if self.collision_left:
-                obstacle_x = x + self.collision_distance*np.math.cos(th-np.pi/2) # our convention is counter-clockwise is negative angle
-                obstacle_y = y + self.collision_distance*np.math.sin(th-np.pi/2)
-                if (dist(x,y,obstacle_x,obstacle_y) < 0.1):
-                    return np.inf
-            if self.collision_right:
-                obstacle_x = x + self.collision_distance*np.math.cos(th+np.pi/2) # our convention is clockwise is positive angle
-                obstacle_y = y + self.collision_distance*np.math.sin(th+np.pi/2)
-                if (dist(x,y,obstacle_x,obstacle_y) < 0.1):
-                    return np.inf
+            # Now check if tentacle is a front going tentacle
+            obstacle_x = x + self.sensor_front_distance*np.math.cos(th)
+            obstacle_y = y + self.sensor_front_distance*np.math.sin(th)
+            # if moving via this tentacle puts us within 10 cm of the obstacle position, don't use it
+            if (dist(x,y,obstacle_x,obstacle_y) < 10):
+                return np.inf
+            # Now check if tentacle is a left going tentacle
+            obstacle_x = x + self.sensor_left_distance*np.math.cos(th-np.pi/2) # our convention is counter-clockwise is negative angle
+            obstacle_y = y + self.sensor_left_distance*np.math.sin(th-np.pi/2)
+            # if moving via this tentacle puts us within 10 cm of the obstacle position, don't use it
+            if (dist(x,y,obstacle_x,obstacle_y) < 10):
+                return np.inf
+            # Now check if tentacle is a right going tentacle
+            obstacle_x = x + self.sensor_right_distance*np.math.cos(th+np.pi/2) # our convention is clockwise is positive angle
+            obstacle_y = y + self.sensor_right_distance*np.math.sin(th+np.pi/2)
+            # if moving via this tentacle puts us within 10 cm of the obstacle position, don't use it
+            if (dist(x,y,obstacle_x,obstacle_y) < 10):
+                return np.inf
                 
         e_th = goal_th-th
         e_th = np.arctan2(np.sin(e_th),np.cos(e_th))
@@ -297,11 +296,16 @@ class TentaclePlanner:
         return self.tentacles[best_idx]
 
     def update_collision_data(self, collisions_pipe):
-        if collisions_pipe.poll():
+        # We must get the latest collision data
+        new_collision_data = False
+        # Keep polling until no new data is found, update data with the newest data found
+        while collisions_pipe.poll():
+            new_collision_data = True
             data = collisions_pipe.recv()
-            self.collision_front = data[0]
-            self.collision_front_distance = data[1]
-            self.collision_left = data[2]
-            self.collision_left_distance = data[3]
-            self.collision_right = data[4]
-            self.collision_right_distance = data[5]
+        if new_collision_data:
+            self.sensor_front = data[0]
+            self.sensor_front_distance = data[1]
+            self.sensor_left = data[2]
+            self.sensor_left_distance = data[3]
+            self.sensor_right = data[4]
+            self.sensor_right_distance = data[5]
