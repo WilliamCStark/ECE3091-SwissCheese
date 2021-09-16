@@ -237,11 +237,19 @@ class TentaclePlanner:
         
         self.dt = dt
         self.steps = steps
-        # Tentacles are possible trajectories to follow
+        # Tentacles are possible trajectories to follow: NOTE we can try adding higher resolution tentacles to make reaching the goal more smooth
         self.tentacles = [(0.0,max_w),(0.0,-max_w),(max_v,max_w),(max_v,-max_w),(max_v,max_w*0.5),(max_v,-max_w*0.5),(max_v,0.0),(0.0,0.0)]
         
         self.alpha = alpha
         self.beta = beta
+
+        # add in some state variables to track collisions
+        self.collision_front = False
+        self.collision_front_distance = 0
+        self.collision_left = False
+        self.collision_left_distance = 0
+        self.collision_right = False
+        self.collision_right_distance = 0
         
         #self.obstacles = obstacles
     # Play a trajectory and evaluate where you'd end up
@@ -253,6 +261,25 @@ class TentaclePlanner:
             y = y + self.dt*v*np.sin(th)
             th = (th + w*self.dt)
         
+            def dist(x,y,obs_x,obs_y):
+                return np.sqrt((x-obs_x)**2+(y-obs_y)**2)
+            if self.collision_front:
+                # Now check if tentacle is a front going tentacle
+                obstacle_x = x + self.collision_distance*np.math.cos(th)
+                obstacle_y = y + self.collision_distance*np.math.sin(th)
+                if (dist(x,y,obstacle_x,obstacle_y) < 0.1):
+                    return np.inf
+            if self.collision_left:
+                obstacle_x = x + self.collision_distance*np.math.cos(th-np.pi/2) # our convention is counter-clockwise is negative angle
+                obstacle_y = y + self.collision_distance*np.math.sin(th-np.pi/2)
+                if (dist(x,y,obstacle_x,obstacle_y) < 0.1):
+                    return np.inf
+            if self.collision_right:
+                obstacle_x = x + self.collision_distance*np.math.cos(th+np.pi/2) # our convention is clockwise is positive angle
+                obstacle_y = y + self.collision_distance*np.math.sin(th+np.pi/2)
+                if (dist(x,y,obstacle_x,obstacle_y) < 0.1):
+                    return np.inf
+                
         e_th = goal_th-th
         e_th = np.arctan2(np.sin(e_th),np.cos(e_th))
         
@@ -268,3 +295,13 @@ class TentaclePlanner:
         best_idx = np.argmin(costs)
         
         return self.tentacles[best_idx]
+
+    def update_collision_data(self, collisions_pipe):
+        if collisions_pipe.poll():
+            data = collisions_pipe.recv()
+            self.collision_front = data[0]
+            self.collision_front_distance = data[1]
+            self.collision_left = data[2]
+            self.collision_left_distance = data[3]
+            self.collision_right = data[4]
+            self.collision_right_distance = data[5]

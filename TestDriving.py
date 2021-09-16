@@ -18,5 +18,7 @@ encoder_r = gpiozero.RotaryEncoder(a=23, b=24,max_steps=100000)  # using GPIO 23
 dt = 0.01
 robot = BaseRobot(wheel_radius, wheel_sep, motor_l, motor_r, encoder_l, encoder_r, dt=dt)
 
-for i in range(1000):
-    robot.drive(0,1) # this function sleeps for the sleeps time dt
+for i in range(500):
+    robot.drive(12, 0) # this function sleeps for the sleeps time dt
+for i in range(500):
+    robot.drive(0,1)

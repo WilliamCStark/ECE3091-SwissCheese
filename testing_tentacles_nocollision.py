@@ -23,7 +23,7 @@ robot = BaseRobot(wheel_radius, wheel_sep, motor_l, motor_r, encoder_l, encoder_
 planner = TentaclePlanner(dt=dt)
 dist_to_goal = np.sqrt((robot.x-x)**2 +  (robot.y-y)**2)
 angle_to_goal = abs(robot.th-th)
-while dist_to_goal > 5 and angle_to_goal > 0.25:
+while not (dist_to_goal < 5 and angle_to_goal < 0.05):
     v, w = planner.plan(x,y,th,robot.x,robot.y,robot.th)
     robot.drive(v,w) # this function sleeps for the sleeps time dt
     dist_to_goal = np.sqrt((robot.x-x)**2 +  (robot.y-y)**2)
