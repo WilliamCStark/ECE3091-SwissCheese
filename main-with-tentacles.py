@@ -100,6 +100,14 @@ if __name__ == '__main__':
             # Sensor thread has detected a collision that was completely unexpected (closer to the obstacle than we should ever get with the tentacles approach), stop everything to avoid losing marks for a collision
             print("COLLIDED")
             driving_pipe_PARENT.send("Die") # this will cause the robot to stop moving
+            terminated = False
+            while not terminated:
+                try:
+                    driving_pipe_PARENT.recv()
+                except ConnectionResetError:
+                    terminated = True
+                except EOFError:
+                    terminated = True
             done = True
     print("Done with all")
     # end the driving thread

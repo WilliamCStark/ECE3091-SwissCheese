@@ -253,15 +253,22 @@ class TentaclePlanner:
     def roll_out(self,v,w,goal_x,goal_y,goal_th,x,y,th):
         
         for j in range(self.steps):
-        
+            delta_x = self.dt*v*np.cos(th)
+            delta_y = self.dt*v*np.sin(th)
+            if (v!=0):
+                print("delta_x: " + str(delta_x))
+                print("delta_x: " + str(delta_y))
             sensor_distances = [self.sensor_front_distance, self.sensor_left_distance, self.sensor_right_distance]
             angular_offset = [0, -np.pi/2, np.pi/2]
             # check each sensor for a possible collision
             for i in range(len(sensor_distances)):
-                new_delta_x = self.dt*v*np.cos(th) - sensor_distances[i]*np.math.cos(th+angular_offset[i])
-                new_delta_y = self.dt*v*np.sin(th) - sensor_distances[i]*np.math.sin(th+angular_offset[i])
+                x_sense = sensor_distances[i]*np.math.cos(th+angular_offset[i])
+                y_sense = sensor_distances[i]*np.math.sin(th+angular_offset[i])
+                if (v!=0):
+                    print("x_sense: " + str(x_sense))
+                    print("y_sense: " + str(y_sense))
                 # if moving via this tentacle puts us within 10 cm of the obstacle position, don't use it
-                if (np.sqrt(new_delta_x**2 + new_delta_y**2) < 10):
+                if (np.sqrt((delta_x-x_sense))**2 + (delta_y-y_sense))**2) < 10):
                     return np.inf
                 
         e_th = goal_th-th
