@@ -45,13 +45,15 @@ def DriveToGoal(x, y, pipe, rob_loc, collisions_pipe):
 # Thread for checking the ultrasonic sensor and reporting collisions
 def CheckUltrasonicSensor(pipe, collisions_pipe):
     front_sensor = DistanceSensor(echo=18,trigger=17) # echo and trigger on pins 18 and 17
+    left_sensor = DistanceSensor(echo=INSERT PIN NUMBER, trigger=INSERT PIN NUMBER)
+    right_sensor = DistanceSensor(echo=INSERT PIN NUMBER, trigger=INSERT PIN NUMBER)
     # TODO: add in other distance sensors for reporting
     dt = 0.01 # check every hundredth of a second for a collision
     while True:
         if front_sensor.distance < 0.05:
             # if we are less than 5 centimeteres away, a collision is really about to occur, we report to the main threads
             pipe.send("Collision")
-        collisions_pipe.send([front_sensor.distance * 100, 100, 100])
+        collisions_pipe.send([front_sensor.distance * 100, left_sensor.distance * 100, right_sensor.distance * 100])
         time.sleep(dt)
 
 ## Main thread here
