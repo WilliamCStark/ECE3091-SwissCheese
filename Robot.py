@@ -164,7 +164,7 @@ class BaseRobot:
 
 
 class Robot (BaseRobot):
-    def __init__(self, wheel_radius, wheel_sep, motor_l, motor_r, rotary_encoder_l, rotary_encoder_r, pipe=None, dt=dt):
+    def __init__(self, wheel_radius, wheel_sep, motor_l, motor_r, rotary_encoder_l, rotary_encoder_r, pipe=None, dt=0.01):
         super().__init__(wheel_radius, wheel_sep, motor_l, motor_r, rotary_encoder_l, rotary_encoder_r, pipe)
     ###############################################################################################
     ### Below are functions that complete some basic movement of the robot
@@ -254,21 +254,14 @@ class TentaclePlanner:
         
         for j in range(self.steps):
         
-            x = x + self.dt*v*np.cos(th)
-            y = y + self.dt*v*np.sin(th)
-            th = (th + w*self.dt)
-            # Choosing which tentacles to ignore based on collisions
-            def dist(x,y,obs_x,obs_y):
-                return np.sqrt((x-obs_x)**2+(y-obs_y)**2)
             sensor_distances = [self.sensor_front_distance, self.sensor_left_distance, self.sensor_right_distance]
             angular_offset = [0, -np.pi/2, np.pi/2]
             # check each sensor for a possible collision
             for i in range(len(sensor_distances)):
-                # Now check if this tentacle results in a collision
-                obstacle_x = x + self.sensor_distances[i]*np.math.cos(th+angular_offset[i])
-                obstacle_y = y + self.sensor_distances[i]*np.math.sin(th+angular_offset[i])
+                new_delta_x = self.dt*v*np.cos(th) - sensor_distances[i]*np.math.cos(th+angular_offset[i])
+                new_delta_y = self.dt*v*np.sin(th) - sensor_distances[i]*np.math.sin(th+angular_offset[i])
                 # if moving via this tentacle puts us within 10 cm of the obstacle position, don't use it
-                if (np.sqrt((x-obstacle_x)**2+(y-obstacle_y)**2) < 10):
+                if (np.sqrt(new_delta_x**2 + new_delta_y**2) < 10):
                     return np.inf
                 
         e_th = goal_th-th
@@ -295,6 +288,6 @@ class TentaclePlanner:
             new_collision_data = True
             data = collisions_pipe.recv()
         if new_collision_data:
-            self.sensor_front_distance = data[1]
-            self.sensor_left_distance = data[3]
-            self.sensor_right_distance = data[5]
+            self.sensor_front_distance = data[0]
+            self.sensor_left_distance = data[1]
+            self.sensor_right_distance = data[2]
