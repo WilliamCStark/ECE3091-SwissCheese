@@ -108,8 +108,8 @@ class BaseRobot:
         # print("Rotational velocity of right wheel: " + str(self.wr))
         # print("Forward velocity: " + str(self.base_velocity()[0]))
         # print("Rotational velocity: " + str(self.base_velocity()[1]))
-       # print("V_desired: " + str(v_desired))
-       # print("w_desired: " + str(w_desired))
+        # print("V_desired: " + str(v_desired))
+        # print("w_desired: " + str(w_desired))
         # print("x location is: " + str(self.x))
         # print("y location is: " + str(self.y))
         # print("th location is: " + str(self.th))
@@ -253,11 +253,15 @@ class TentaclePlanner:
     def roll_out(self,v,w,goal_x,goal_y,goal_th,x,y,th):
         
         for j in range(self.steps):
+            x = x + self.dt*v*np.cos(th)
+            y = y + self.dt*v*np.sin(th)
+            th = (th + w*self.dt)
             sensor_distances = [self.sensor_front_distance, self.sensor_left_distance, self.sensor_right_distance]
             sensor_labels = ["front", "left", "right"]
             # check each sensor for a possible collision
             for i in range(len(sensor_distances)):
                 if (sensor_distances[i] < 10):
+                    print(sensor_labels[i] + " sensor detected collision! Evaluating tentacle (" + str(v) + ", " + str(w) + ")...")
                     # We have detected an obstacle in this direction, ignore these tentacles
                     if i == 0:
                         # ignore front going tentacles
