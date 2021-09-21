@@ -15,7 +15,7 @@ wheel_radius = 2.26 # chuck in actual wheel_radius
 wheel_sep = 5 # chuck in actual wheel separation
 
 # Thread for driving to a goal location
-def DriveToGoal(x, y, pipe, rob_loc, collisions_pipe):
+def DriveToGoal(x, y, th, pipe, rob_loc, collisions_pipe):
     # Create the robot at the correct location
     motor_l = Motor(gpiozero.PWMOutputDevice(pin=12,active_high=True,initial_value=0,frequency=10000), gpiozero.OutputDevice(pin=5)) # using GPIO 12 for PWM, GPIO 5 for direction
     motor_r = Motor(gpiozero.PWMOutputDevice(pin=13,active_high=True,initial_value=0,frequency=10000), gpiozero.OutputDevice(pin=6))# using GPIO 13 for PWM, GPIO 6 for direction
@@ -62,10 +62,11 @@ if __name__ == '__main__':
     x, y, th = 0, 0, 0
     goal_x = 30 # at 30cm away from origin in x-direction
     goal_y = 30 # at 30cm away from origin in y-direction
+    goal_th = 0 # align with zero
     # Set up the drive to goal process
     driving_pipe_PARENT, driving_pipe_CHILD = Pipe()
     collision_pipe_DRIVE_END, collision_pipe_SENSOR_END = Pipe()
-    driving_process = Process(target=DriveToGoal, args=(goal_x,goal_y,driving_pipe_CHILD, (x,y,th),collision_pipe_DRIVE_END))
+    driving_process = Process(target=DriveToGoal, args=(goal_x,goal_y,goal_th,driving_pipe_CHILD, (x,y,th),collision_pipe_DRIVE_END))
     driving_process.start()
     driving_pipe_CHILD.close()
     # Set up the sensor process
@@ -108,10 +109,10 @@ if __name__ == '__main__':
                     terminated = True
                 except EOFError:
                     terminated = True
+            driving_process.terminate()
             done = True
     print("Done with all")
     # end the driving thread
-    driving_process.terminate()
     driving_process.join()
     # end the sensing thread
     sensor_process.terminate()

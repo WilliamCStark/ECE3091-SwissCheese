@@ -274,6 +274,7 @@ class TentaclePlanner:
                     if i == 2:
                         # ignore right going tentacles
                         if w > 0:
+                            print("Ignoring tentacle: (" + str(v) + ", " + str(w) + ")...")
                             return np.inf
                 
         e_th = goal_th-th
@@ -289,6 +290,8 @@ class TentaclePlanner:
             costs.append(self.roll_out(v,w,goal_x,goal_y,goal_th,x,y,th))
         
         best_idx = np.argmin(costs)
+
+        print("Chosen Tentacle: ",  self.tentacles[best_idx])
         
         return self.tentacles[best_idx]
 
