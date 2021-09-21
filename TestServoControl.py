@@ -4,12 +4,12 @@ from gpiozero.pins.mock import MockFactory, MockPWMPin
 import numpy as np
 from gpiozero import Servo
 
-servo = Servo(17) # Insert the pin number of the servo output here
+servo = Servo(21) # Insert the pin number of the servo output here
 
-while True:
-    servo.min()
-    time.sleep(1)
-    servo.mid()
-    time.sleep(1)
-    servo.max()
-    time.sleep(1)
+servo.value = -1 # stay at zero
+time.sleep(5)
+print("move to pickup")
+servo.value = -0.5 # rotate 90 degrees to pickup
+time.sleep(5)
+print("move back")
+servo.value = -1
