@@ -1,0 +1,56 @@
+# def RotateOnSpot(pipe, rob_loc, current_corner):
+#     # Rotate through an angle of 90 degrees to view entire field
+#     motor_l = Motor(gpiozero.PWMOutputDevice(pin=12,active_high=True,initial_value=0,frequency=10000), gpiozero.OutputDevice(pin=5)) # using GPIO 12 for PWM, GPIO 5 for direction
+#     motor_r = Motor(gpiozero.PWMOutputDevice(pin=13,active_high=True,initial_value=0,frequency=10000), gpiozero.OutputDevice(pin=6))# using GPIO 13 for PWM, GPIO 6 for direction
+#     encoder_l = gpiozero.RotaryEncoder(a=22, b=27,max_steps=100000)  # using GPIO 22 and GPIO 27 for a and b pins from rotary encoder
+#     encoder_r = gpiozero.RotaryEncoder(a=23, b=24,max_steps=100000)  # using GPIO 23 and GPIO 24 for a and b pins from rotary encoder
+#     dt = 0.01
+#     robot = BaseRobot(wheel_radius, wheel_sep, motor_l, motor_r, encoder_l, encoder_r, pipe, dt=dt)
+#     max_w = 1
+#     # set it to the correct location
+#     robot.x = rob_loc[0]
+#     robot.y = rob_loc[1]
+#     robot.th = rob_loc[2]
+#     # Set angle to start angle
+#     limit_offset = robot.th // (2*np.pi)
+#     th_limited = robot.th - limit_offset
+#     required_angles = [0, np.pi/2, np.pi, 3*np.pi/2]
+#     set_angle = required_angles[current_corner]
+#     direction = 0
+#     if abs(th_limited - set_angle) < np.pi:
+#         if th_limited > set_angle:
+#             # Rotate counter-clockwise (direction negative)
+#             direction = 1
+#         else:
+#             # Rotate clockwise (direction positive)
+#             direction = 0
+#     else:
+#         # here we are wrapping
+#         if th_limited > set_angle:
+#             # Rotate clockwise (direction positive)
+#             direction = 0
+#             set_angle = set_angle + 2*np.pi
+#         else:
+#             # Rotate counter-clockwise (direction negative)
+#             direction = 1
+#             set_angle = set_angle - 2*np.pi
+#     def reached_angle(angle, set_angle, direction):
+#         if direction:
+#             # rotating ccw (direction going negative)
+#             return angle < set_angle
+#         else:
+#             # rotating cw (direction going positive)
+#             return angle > set_angle
+#     while not reached_angle(th_limited, set_angle, direction):
+#         # rotate in the correct direction
+#         if direction:
+#             # rotate counter-clockwise
+#             robot.drive(0, -0.5*max_w)
+#         else:
+#             # rotate counter-clockwise
+#             robot.drive(0, 0.5*max_w)
+#         th_limited = robot.th - limit_offset
+#     # Rotate counter-clockwise through 90 degrees
+#     while th_limited > set_angle - np.pi/2:
+#         robot.drive(0, -0.5*max_w)
+#         th_limited = robot.th - limit_offset

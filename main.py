@@ -13,6 +13,7 @@ from gpiozero import DistanceSensor
 
 wheel_radius = 2.26 # chuck in actual wheel_radius
 wheel_sep = 5 # chuck in actual wheel separation
+arena_dims = (100, 100) # width and height of arena in cm
 
 # Thread for driving to a goal location
 def DriveToGoal(x, y, th, pipe, rob_loc, collisions_pipe):
@@ -56,6 +57,70 @@ def CheckUltrasonicSensor(pipe, collisions_pipe):
         collisions_pipe.send([front_sensor.distance * 100, left_sensor.distance * 100, right_sensor.distance * 100])
         time.sleep(dt)
 
+def CameraThread(pipe):
+    # Set up all code to interface with camera and feed to model - return the position of the ball bearing
+    dt = 0.01 # choose a reasonable target refresh rate
+    while True:
+        xpos, ypos, width, height = 0.4, 0.4, 0.05, 0.05 # replace with model - normalise according to image size
+        bearing_found = False # replace with model
+        msg = [bearing_found, xpos, ypos, width, height]
+        pipe.send(msg)
+        time.sleep(dt)
+
+def DriveToBallBearing(pipe, rob_loc, ball_loc):
+    # we must drive in a straight line towards the ball-bearing
+    motor_l = Motor(gpiozero.PWMOutputDevice(pin=12,active_high=True,initial_value=0,frequency=10000), gpiozero.OutputDevice(pin=5)) # using GPIO 12 for PWM, GPIO 5 for direction
+    motor_r = Motor(gpiozero.PWMOutputDevice(pin=13,active_high=True,initial_value=0,frequency=10000), gpiozero.OutputDevice(pin=6))# using GPIO 13 for PWM, GPIO 6 for direction
+    encoder_l = gpiozero.RotaryEncoder(a=22, b=27,max_steps=100000)  # using GPIO 22 and GPIO 27 for a and b pins from rotary encoder
+    encoder_r = gpiozero.RotaryEncoder(a=23, b=24,max_steps=100000)  # using GPIO 23 and GPIO 24 for a and b pins from rotary encoder
+    dt = 0.01
+    robot = BaseRobot(wheel_radius, wheel_sep, motor_l, motor_r, encoder_l, encoder_r, pipe, dt=dt)
+    max_v = 12
+    max_w = 1
+    # set it to the correct location
+    robot.x = rob_loc[0]
+    robot.y = rob_loc[1]
+    robot.th = rob_loc[2]
+    # store the latest ball camera position, normalised to the size of the image
+    bearing_found, xpos, ypos, width, height = ball_loc
+    while bearing_found:
+        # TODO: get new info from pipe
+        if pipe.poll():
+            msg = pipe.recv()
+            if msg == "Die":
+                robot.stop()
+                pipe.close()
+                # wait for death
+                while True:
+                    pass
+            bearing_found, xpos, ypos, width, height = msg
+        # TODO: add in a way of getting distance of ball_bearing
+        # Simple drive towards ball_bearing
+        if xpos < 0.4:
+            # set bearing left
+            v, w = (0.5*max_v, -0.5*max_w)
+        elif xpos > 0.6:
+            # set bearing right
+            v, w = (0.5*max_v, 0.5*max_w)
+        else:
+            # straight ahead bearing
+            v, w = (0.5*max_v, 0)
+        robot.drive(v, w) # this function sleeps for dt
+
+def ScanForMarble(pipe, rob_loc, collisions_pipe):
+    goals = [(0, 0, 0), (0, -arena_dims[1], np.pi/2), (arena_dims[0], -arena_dims[1], np.pi), (arena_dims[0], 0, 3*np.pi/2)] # the locations of each corner
+    for current_corner in range(4):
+        # Navigate to the relavent corner with correct heading - NOTE may need to offset from actual corners to avoid collisions, might need to decrease angular range as well
+        goal_x, goal_y, goal_th = goals[current_corner]
+        driving_process = Process(target=DriveToGoal, args=(goal_x,goal_y,goal_th,pipe, rob_loc,collisions_pipe))
+        driving_process.start()
+        driving_process.join()
+        # Once we've got to the corner, rotate through 90 degrees
+        new_goal_th = goal_th - np.pi/2
+        driving_process = Process(target=DriveToGoal, args=(goal_x,goal_y,new_goal_th,pipe, rob_loc,collisions_pipe))
+        driving_process.start()
+        driving_process.join()
+
 ## Main thread here
 if __name__ == '__main__':
     # set robot starting location
@@ -63,17 +128,41 @@ if __name__ == '__main__':
     goal_x = 30 # at 30cm away from origin in x-direction
     goal_y = 30 # at 30cm away from origin in y-direction
     goal_th = 0 # align with zero
-    # Set up the drive to goal process
-    driving_pipe_PARENT, driving_pipe_CHILD = Pipe()
-    collision_pipe_DRIVE_END, collision_pipe_SENSOR_END = Pipe()
-    driving_process = Process(target=DriveToGoal, args=(goal_x,goal_y,goal_th,driving_pipe_CHILD, (x,y,th),collision_pipe_DRIVE_END))
-    driving_process.start()
-    driving_pipe_CHILD.close()
+    # Set up the camera thread
+    camera_pipe_PARENT, camera_pipe_CHILD = Pipe()
+    camera_process = Process(target=CameraThread, args=(camera_pipe_CHILD, (x,y,th)))
+    camera_process.start()
+    camera_pipe_CHILD.close()
     # Set up the sensor process
+    collision_pipe_DRIVE_END, collision_pipe_SENSOR_END = Pipe()
     sensor_pipe_PARENT, sensor_pipe_CHILD = Pipe()
     sensor_process = Process(target=CheckUltrasonicSensor, args=(sensor_pipe_CHILD,collision_pipe_SENSOR_END))
     sensor_process.start()
     sensor_pipe_CHILD.close()
+    # Now figure out what to do based on camera information
+    msg = camera_pipe_PARENT.recv()
+    bearing_found = msg[0] # flag indicating whether the camera has found a bearing
+    if bearing_found:
+        # do something if the bearing has been found
+        # start drive to bearing thread
+        driving_pipe_PARENT, driving_pipe_CHILD = Pipe()
+        driving_process = Process(target=DriveToBallBearing, args=(driving_pipe_CHILD, (x,y,th), msg))
+        driving_process.start()
+        driving_pipe_CHILD.close()
+    else:
+        # do something else if the bearing hasn't been found
+        # start rotating on spot thread
+        driving_pipe_PARENT, driving_pipe_CHILD = Pipe()
+        driving_process = Process(target=ScanForMarble, args=(driving_pipe_CHILD, (x,y,th),collision_pipe_DRIVE_END))
+        driving_process.start()
+        driving_pipe_CHILD.close()
+        
+    # Set up the drive to goal process - only when we need to navigate to a goal location
+    # driving_pipe_PARENT, driving_pipe_CHILD = Pipe()
+    # collision_pipe_DRIVE_END, collision_pipe_SENSOR_END = Pipe()
+    # driving_process = Process(target=DriveToGoal, args=(goal_x,goal_y,goal_th,driving_pipe_CHILD, (x,y,th),collision_pipe_DRIVE_END))
+    # driving_process.start()
+    # driving_pipe_CHILD.close()
     done = False
     # Run this main process which will drive the robot to the goal, ending either when it reaches the goal, or detects a collision
     last_time_printed = time.time()
@@ -94,7 +183,8 @@ if __name__ == '__main__':
                 y = msg[1]
                 th = msg[2]
             except EOFError:
-                # if the driving thread ever ends, it's because it reached the goal
+                # if the driving thread ends, figure out why and react accordingly
+                # TODO: driving thread could finish because we went through an entire scan, or because we reached the marble and need to start a pickup or the driving was part of the pickup
                 done = True
         if sensor_pipe_PARENT.poll():
             sensor_pipe_PARENT.recv()
@@ -111,6 +201,10 @@ if __name__ == '__main__':
                     terminated = True
             driving_process.terminate()
             done = True
+        if camera_pipe_PARENT.poll():
+            # deal with camera input
+            pass
+
     print("Done with all")
     # end the driving thread
     driving_process.join()
