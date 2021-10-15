@@ -82,9 +82,9 @@ def DriveToBallBearing(pipe, rob_loc, ball_loc):
     robot.y = rob_loc[1]
     robot.th = rob_loc[2]
     # store the latest ball camera position, normalised to the size of the image
+    # TODO: factor in losing sight of the ball bearing for a reason other than arriving at it. also maybe we can still see ball-bearing once we've reached it
     bearing_found, xpos, ypos, width, height = ball_loc
     while bearing_found:
-        # TODO: get new info from pipe
         if pipe.poll():
             msg = pipe.recv()
             if msg == "Die":
@@ -120,6 +120,12 @@ def ScanForMarble(pipe, rob_loc, collisions_pipe):
         driving_process = Process(target=DriveToGoal, args=(goal_x,goal_y,new_goal_th,pipe, rob_loc,collisions_pipe))
         driving_process.start()
         driving_process.join()
+# Thread controlling the marble pickup
+def MarblePickup(pipe, rob_loc, collisions_pipe):
+    pass
+    # TODO: put code for activating servo to lower arm
+    # TODO: put code to turn on electromagnet
+    # TODO: put code for activating servo to raise arm
 
 ## Main thread here
 if __name__ == '__main__':
@@ -142,16 +148,22 @@ if __name__ == '__main__':
     # Now figure out what to do based on camera information
     msg = camera_pipe_PARENT.recv()
     bearing_found = msg[0] # flag indicating whether the camera has found a bearing
+    # flag variables to set state of robot
+    scanning = False
+    in_pickup = False
+    driving_to_marble = False
     if bearing_found:
         # do something if the bearing has been found
         # start drive to bearing thread
+        driving_to_marble = True
         driving_pipe_PARENT, driving_pipe_CHILD = Pipe()
         driving_process = Process(target=DriveToBallBearing, args=(driving_pipe_CHILD, (x,y,th), msg))
         driving_process.start()
         driving_pipe_CHILD.close()
     else:
         # do something else if the bearing hasn't been found
-        # start rotating on spot thread
+        # start scanning thread
+        scanning = True
         driving_pipe_PARENT, driving_pipe_CHILD = Pipe()
         driving_process = Process(target=ScanForMarble, args=(driving_pipe_CHILD, (x,y,th),collision_pipe_DRIVE_END))
         driving_process.start()
@@ -185,6 +197,23 @@ if __name__ == '__main__':
             except EOFError:
                 # if the driving thread ends, figure out why and react accordingly
                 # TODO: driving thread could finish because we went through an entire scan, or because we reached the marble and need to start a pickup or the driving was part of the pickup
+                if scanning:
+                    # if we finish scanning, we could not find the marble, we need to end
+                    done = True
+                else:
+                    if in_pickup:
+                        # TODO: if the pickup thread ends then we've picked up the marble and need to end
+                        done = True
+                    else:
+                        # TODO: put code to handle when we've reached the marble and need to pickup (check if we're in driving to marble thread)
+                        # start the marble pickup thread
+                        in_pickup = True
+                        scanning = False
+                        driving_to_marble = False
+                        driving_pipe_PARENT, driving_pipe_CHILD = Pipe()
+                        driving_process = Process(target=MarblePickup, args=(driving_pipe_CHILD, (x,y,th),collision_pipe_DRIVE_END))
+                        driving_process.start()
+                        driving_pipe_CHILD.close()
                 done = True
         if sensor_pipe_PARENT.poll():
             sensor_pipe_PARENT.recv()
@@ -203,7 +232,13 @@ if __name__ == '__main__':
             done = True
         if camera_pipe_PARENT.poll():
             # deal with camera input
-            pass
+            msg = camera_pipe_PARENT.recv()
+            if scanning:
+                # TODO: add code to check if the new camera data received whilst scanning means we have a marble
+                pass
+            elif bearing_found:
+                # we have already found the bearing, we need to update the position in the thread navigating to the bearing
+                driving_pipe_PARENT.send(msg)
 
     print("Done with all")
     # end the driving thread
