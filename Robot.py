@@ -244,7 +244,8 @@ class TentaclePlanner:
         self.beta = beta
 
         # add in some state variables to track collisions
-        self.sensor_front_distance = 100 # in cm
+        self.sensor_front1_distance = 100 # in cm
+        self.sensor_front2_distance = 100 # in cm
         self.sensor_left_distance = 100 # in cm
         self.sensor_right_distance = 100 # in cm
         
@@ -256,22 +257,22 @@ class TentaclePlanner:
             x = x + self.dt*v*np.cos(th)
             y = y + self.dt*v*np.sin(th)
             th = (th + w*self.dt)
-            sensor_distances = [self.sensor_front_distance, self.sensor_left_distance, self.sensor_right_distance]
-            sensor_labels = ["front", "left", "right"]
+            sensor_distances = [self.sensor_front1_distance, self.sensor_front2_distance, self.sensor_left_distance, self.sensor_right_distance]
+            sensor_labels = ["front1", "front2", "left", "right"]
             # check each sensor for a possible collision
             for i in range(len(sensor_distances)):
                 if (sensor_distances[i] < 10):
                     print(sensor_labels[i] + " sensor detected collision! Evaluating tentacle (" + str(v) + ", " + str(w) + ")...")
                     # We have detected an obstacle in this direction, ignore these tentacles
-                    if i == 0:
+                    if i == 0 or i == 1:
                         # ignore front going tentacles
                         if v > 0:
                             return np.inf
-                    if i == 1:
+                    if i == 2:
                         # ignore left going tentacles
                         if w < 0:
                             return np.inf
-                    if i == 2:
+                    if i == 3:
                         # ignore right going tentacles
                         if w > 0:
                             print("Ignoring tentacle: (" + str(v) + ", " + str(w) + ")...")
@@ -303,6 +304,7 @@ class TentaclePlanner:
             new_collision_data = True
             data = collisions_pipe.recv()
         if new_collision_data:
-            self.sensor_front_distance = data[0]
-            self.sensor_left_distance = data[1]
-            self.sensor_right_distance = data[2]
+            self.sensor_front1_distance = data[0]
+            self.sensor_front2_distance = data[1]
+            self.sensor_left_distance = data[2]
+            self.sensor_right_distance = data[3]

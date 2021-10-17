@@ -7,6 +7,8 @@ from gpiozero.pins.mock import MockFactory, MockPWMPin
 import numpy as np
 import queue
 from gpiozero import DistanceSensor
+from gpiozero import AngularServo
+from gpiozero import LED
 
 # For testing on a PC that isn't the PI. Make sure to comment out when running on pi
 #gpiozero.Device.pin_factory = MockFactory(pin_class=MockPWMPin)
@@ -45,16 +47,17 @@ def DriveToGoal(x, y, th, pipe, rob_loc, collisions_pipe):
 
 # Thread for checking the ultrasonic sensor and reporting collisions
 def CheckUltrasonicSensor(pipe, collisions_pipe):
-    front_sensor = DistanceSensor(echo=18,trigger=17) # echo and trigger on pins 18 and 17
+    front_sensor_1 = DistanceSensor(echo=18,trigger=17) # echo and trigger on pins 18 and 17
+    front_sensor_2 = DistanceSensor(echo=,trigger=) # change pins to the second front sensor
     left_sensor = DistanceSensor(echo=14, trigger=15)
     right_sensor = DistanceSensor(echo=16, trigger=26)
     # TODO: add in other distance sensors for reporting
     dt = 0.01 # check every hundredth of a second for a collision
     while True:
-        if front_sensor.distance < 0.05:
+        if front_sensor_1.distance < 0.05 or front_sensor_2.distance < 0.05:
             # if we are less than 5 centimeteres away, a collision is really about to occur, we report to the main threads
             pipe.send("Collision")
-        collisions_pipe.send([front_sensor.distance * 100, left_sensor.distance * 100, right_sensor.distance * 100])
+        collisions_pipe.send([front_sensor_1.distance * 100, front_sensor_2.distance * 100, left_sensor.distance * 100, right_sensor.distance * 100])
         time.sleep(dt)
 
 def CameraThread(pipe):
@@ -112,23 +115,82 @@ def ScanForMarble(pipe, rob_loc, collisions_pipe):
     for current_corner in range(4):
         # Navigate to the relavent corner with correct heading - NOTE may need to offset from actual corners to avoid collisions, might need to decrease angular range as well
         goal_x, goal_y, goal_th = goals[current_corner]
-        driving_process = Process(target=DriveToGoal, args=(goal_x,goal_y,goal_th,pipe, rob_loc,collisions_pipe))
+        driving_pipe_PARENT, driving_pipe_CHILD = Pipe()
+        driving_process = Process(target=DriveToGoal, args=(goal_x,goal_y,goal_th,driving_pipe_CHILD, rob_loc,collisions_pipe))
         driving_process.start()
+        driving_pipe_CHILD.close()
+        # need to check for thread kill requests
+        done = False
+        while driving_process.is_alive():
+            if pipe.poll():
+                msg = pipe.recv()
+                if msg == "Die":
+                    driving_pipe_PARENT.send("Die") # this will cause the robot to stop moving
+                    terminated = False
+                    while not terminated:
+                        try:
+                            driving_pipe_PARENT.recv()
+                        except ConnectionResetError:
+                            terminated = True
+                        except EOFError:
+                            terminated = True
+                    driving_process.terminate()
+                    done = True
+                    pipe.close()
+                    done = True
+                else:
+                    driving_pipe_PARENT.send(msg)
+        if done:
+            break
         driving_process.join()
         # Once we've got to the corner, rotate through 90 degrees
         new_goal_th = goal_th - np.pi/2
-        driving_process = Process(target=DriveToGoal, args=(goal_x,goal_y,new_goal_th,pipe, rob_loc,collisions_pipe))
+        driving_pipe_PARENT, driving_pipe_CHILD = Pipe()
+        driving_process = Process(target=DriveToGoal, args=(goal_x,goal_y,goal_th,driving_pipe_CHILD, rob_loc,collisions_pipe))
         driving_process.start()
+        driving_pipe_CHILD.close()
+        # need to check for thread kill requests
+        done = False
+        while driving_process.is_alive():
+            if pipe.poll():
+                msg = pipe.recv()
+                if msg == "Die":
+                    driving_pipe_PARENT.send("Die") # this will cause the robot to stop moving
+                    terminated = False
+                    while not terminated:
+                        try:
+                            driving_pipe_PARENT.recv()
+                        except ConnectionResetError:
+                            terminated = True
+                        except EOFError:
+                            terminated = True
+                    driving_process.terminate()
+                    done = True
+                    pipe.close()
+                    done = True
+                else:
+                    driving_pipe_PARENT.send(msg)
+        if done:
+            break
         driving_process.join()
 # Thread controlling the marble pickup
 def MarblePickup(pipe, rob_loc, collisions_pipe):
-    pass
+    # TODO: add driving code, can add after we've tested basic function
+    servo = AngularServo(26, min_pulse_width=0.0005, max_pulse_width=0.0025)
+    led = LED(17) # insert the actual pin for the electromagnet control
     # TODO: put code for activating servo to lower arm
+    servo.angle = 90 # replace with actual angle
+    time.sleep(1)
     # TODO: put code to turn on electromagnet
+    led.on()
+    time.sleep(1)
     # TODO: put code for activating servo to raise arm
+    servo.angle = 0 # replace with actual angle
+    time.sleep(1)
+    led.off()
+    time.sleep(1)
 
-## Main thread here
-if __name__ == '__main__':
+def main_thread():
     # set robot starting location
     x, y, th = 0, 0, 0
     goal_x = 30 # at 30cm away from origin in x-direction
@@ -168,13 +230,6 @@ if __name__ == '__main__':
         driving_process = Process(target=ScanForMarble, args=(driving_pipe_CHILD, (x,y,th),collision_pipe_DRIVE_END))
         driving_process.start()
         driving_pipe_CHILD.close()
-        
-    # Set up the drive to goal process - only when we need to navigate to a goal location
-    # driving_pipe_PARENT, driving_pipe_CHILD = Pipe()
-    # collision_pipe_DRIVE_END, collision_pipe_SENSOR_END = Pipe()
-    # driving_process = Process(target=DriveToGoal, args=(goal_x,goal_y,goal_th,driving_pipe_CHILD, (x,y,th),collision_pipe_DRIVE_END))
-    # driving_process.start()
-    # driving_pipe_CHILD.close()
     done = False
     # Run this main process which will drive the robot to the goal, ending either when it reaches the goal, or detects a collision
     last_time_printed = time.time()
@@ -196,25 +251,25 @@ if __name__ == '__main__':
                 th = msg[2]
             except EOFError:
                 # if the driving thread ends, figure out why and react accordingly
-                # TODO: driving thread could finish because we went through an entire scan, or because we reached the marble and need to start a pickup or the driving was part of the pickup
                 if scanning:
                     # if we finish scanning, we could not find the marble, we need to end
                     done = True
                 else:
                     if in_pickup:
-                        # TODO: if the pickup thread ends then we've picked up the marble and need to end
+                        # if the pickup thread ends then we've picked up the marble and need to end
                         done = True
-                    else:
-                        # TODO: put code to handle when we've reached the marble and need to pickup (check if we're in driving to marble thread)
+                    elif driving_to_marble:
+                        # currently, if the driving to marble thread ends, it means it lost sight of the marble, which we've assumed means we've reached it. This might not be entirely accurate
+                        # we may need to include a different condition for when we've reached the marble (distance travelled or location of marble in view), or need to consdier the fact
+                        # that we can lose sight of the marble for other reasons (obstacle gets in the way) if this happens, we could remember the approximate location of the marble, and try to reposition to that location
+                        
                         # start the marble pickup thread
                         in_pickup = True
-                        scanning = False
                         driving_to_marble = False
                         driving_pipe_PARENT, driving_pipe_CHILD = Pipe()
                         driving_process = Process(target=MarblePickup, args=(driving_pipe_CHILD, (x,y,th),collision_pipe_DRIVE_END))
                         driving_process.start()
                         driving_pipe_CHILD.close()
-                done = True
         if sensor_pipe_PARENT.poll():
             sensor_pipe_PARENT.recv()
             # Sensor thread has detected a collision that was completely unexpected (closer to the obstacle than we should ever get with the tentacles approach), stop everything to avoid losing marks for a collision
@@ -234,10 +289,20 @@ if __name__ == '__main__':
             # deal with camera input
             msg = camera_pipe_PARENT.recv()
             if scanning:
-                # TODO: add code to check if the new camera data received whilst scanning means we have a marble
-                pass
-            elif bearing_found:
-                # we have already found the bearing, we need to update the position in the thread navigating to the bearing
+                # check if the new camera data received whilst scanning means we have a marble
+                if msg[0]:
+                    # we have detected a ball bearing, we should start the drive to bearing thread
+                    # we need to kill the scanning thread first
+                    driving_pipe_PARENT.send("Die") # this will cause the robot to stop moving
+                    driving_process.join()
+                    driving_to_marble = True
+                    scanning = False
+                    driving_pipe_PARENT, driving_pipe_CHILD = Pipe()
+                    driving_process = Process(target=DriveToBallBearing, args=(driving_pipe_CHILD, (x,y,th), msg))
+                    driving_process.start()
+                    driving_pipe_CHILD.close()
+            elif driving_to_marble:
+                # we are driving to the marble we need to update the position in the thread navigating to the bearing
                 driving_pipe_PARENT.send(msg)
 
     print("Done with all")
@@ -246,3 +311,7 @@ if __name__ == '__main__':
     # end the sensing thread
     sensor_process.terminate()
     sensor_process.join()
+
+## Main thread here
+if __name__ == '__main__':
+    main_thread() # comment out to test individual functions
