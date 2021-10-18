@@ -37,9 +37,10 @@ def DriveToGoal(x, y, th, pipe, rob_loc, collisions_pipe, drive_to_point_mode):
     # Put in code for dealing with driving to the goal with the tentacles
     planner = TentaclePlanner(dt=dt, alpha=alpha, beta=beta) # uses default max_v and max_w values
     dist_to_goal = np.sqrt((robot.x-x)**2 +  (robot.y-y)**2)
-    angle_to_goal = abs(robot.th-th)
+    angle_to_goal = robot.th-th
+    angle_to_goal = np.arctan2(np.sin(angle_to_goal),np.cos(angle_to_goal))
     last_time_printed = time.time()
-    exit_condition = [dist_to_goal < 5, angle_to_goal < 0.05]
+    exit_condition = [dist_to_goal < 5, abs(angle_to_goal) < 0.05]
     while not exit_condition[0 if drive_to_point_mode else 1]:
         if time.time() - last_time_printed > 0.5:
             print("goal: " , (x,y,th))
@@ -48,7 +49,9 @@ def DriveToGoal(x, y, th, pipe, rob_loc, collisions_pipe, drive_to_point_mode):
         v, w = planner.plan(x,y,th,robot.x,robot.y,robot.th) # use tentacles to generate a pair of v and w values to drive at
         robot.drive(v,w) # this function sleeps for the sleeps time dt
         dist_to_goal = np.sqrt((robot.x-x)**2 +  (robot.y-y)**2)
-        angle_to_goal = abs(robot.th-th)
+        angle_to_goal = robot.th-th
+        angle_to_goal = np.arctan2(np.sin(angle_to_goal),np.cos(angle_to_goal))
+        exit_condition = [dist_to_goal < 5, abs(angle_to_goal) < 0.05]
     # finish up business
     robot.stop()
     robot.pipe.close()
