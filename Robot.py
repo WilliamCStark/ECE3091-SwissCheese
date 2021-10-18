@@ -238,7 +238,7 @@ class TentaclePlanner:
         self.dt = dt
         self.steps = steps
         # Tentacles are possible trajectories to follow: NOTE we can try adding higher resolution tentacles to make reaching the goal more smooth
-        self.tentacles = [(0.0,max_w),(0.0,-max_w),(max_v,max_w),(max_v,-max_w),(max_v,max_w*0.5),(max_v,-max_w*0.5),(max_v,0.0),(0.0,0.0)]
+        self.tentacles = [(0.0,max_w),(0.0,-max_w),(max_v,max_w),(max_v,-max_w),(max_v,max_w*0.5),(max_v,-max_w*0.5),(max_v,0.0)]
         
         self.alpha = alpha
         self.beta = beta
