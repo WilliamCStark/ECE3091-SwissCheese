@@ -39,7 +39,8 @@ def DriveToGoal(x, y, th, pipe, rob_loc, collisions_pipe, drive_to_point_mode):
     dist_to_goal = np.sqrt((robot.x-x)**2 +  (robot.y-y)**2)
     angle_to_goal = abs(robot.th-th)
     last_time_printed = time.time()
-    while not (dist_to_goal < 5 and angle_to_goal < 0.05):
+    exit_condition = [dist_to_goal < 5, angle_to_goal < 0.05]
+    while not exit_condition[0 if drive_to_point_mode else 1]:
         if time.time() - last_time_printed > 0.5:
             print("goal: " , (x,y,th))
             last_time_printed = time.time()
