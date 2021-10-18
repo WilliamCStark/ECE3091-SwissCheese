@@ -168,7 +168,6 @@ def ScanForMarble(pipe, rob_loc, collisions_pipe):
                         except EOFError:
                             terminated = True
                     driving_process.terminate()
-                    done = True
                     pipe.close()
                     done = True
                 else:
