@@ -9,6 +9,9 @@ import queue
 from gpiozero import DistanceSensor
 from gpiozero import AngularServo
 from gpiozero import LED
+import torch
+import cv2
+from PIL import Image
 
 # For testing on a PC that isn't the PI. Make sure to comment out when running on pi
 #gpiozero.Device.pin_factory = MockFactory(pin_class=MockPWMPin)
@@ -74,12 +77,28 @@ def CheckUltrasonicSensor(pipe, collisions_pipe):
 
 def CameraThread(pipe):
     # Set up all code to interface with camera and feed to model - return the position of the ball bearing
+    # Load custom trained model
+    model = torch.hub.load('ultralytics/yolov5','custom', path='best.pt') 
+    #image = 'imagegg.jpg'
+
+    # Capture PIL image
+    cap = cv2.VideoCapture('/dev/video0', cv2.CAP_V4L)
+
+    cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1280)
+    cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 720)
     dt = 0.01 # choose a reasonable target refresh rate
     while True:
-        xpos, ypos, width, height = 0.4, 0.4, 0.05, 0.05 # replace with model - normalise according to image size
-        bearing_found = False # replace with model
-        msg = [bearing_found, xpos, ypos, width, height]
-        pipe.send(msg)
+        # xpos, ypos, width, height = 0.4, 0.4, 0.05, 0.05 # replace with model - normalise according to image size
+        # bearing_found = False # replace with model
+        # msg = [bearing_found, xpos, ypos, width, height]
+        # pipe.send(msg)
+        ret, frame = cap.read()
+        # Pass image through model to get results
+        model.conf = 0.2
+        results = model(frame, size = 416)
+        coords = results.pandas().xyxy[0]
+
+        print(coords)
         time.sleep(dt)
 
 def DriveToBallBearing(pipe, rob_loc, ball_loc):
