@@ -198,7 +198,7 @@ def main_thread():
     goal_th = 0 # align with zero
     # Set up the camera thread
     camera_pipe_PARENT, camera_pipe_CHILD = Pipe()
-    camera_process = Process(target=CameraThread, args=(camera_pipe_CHILD, (x,y,th)))
+    camera_process = Process(target=CameraThread, args=(camera_pipe_CHILD,))
     camera_process.start()
     camera_pipe_CHILD.close()
     # Set up the sensor process
