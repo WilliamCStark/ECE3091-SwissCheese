@@ -48,7 +48,7 @@ def DriveToGoal(x, y, th, pipe, rob_loc, collisions_pipe):
 # Thread for checking the ultrasonic sensor and reporting collisions
 def CheckUltrasonicSensor(pipe, collisions_pipe):
     front_sensor_1 = DistanceSensor(echo=18,trigger=17) # echo and trigger on pins 18 and 17
-    front_sensor_2 = DistanceSensor(echo=,trigger=) # change pins to the second front sensor
+    front_sensor_2 = DistanceSensor(echo=19,trigger=20) # change pins to the second front sensor
     left_sensor = DistanceSensor(echo=14, trigger=15)
     right_sensor = DistanceSensor(echo=16, trigger=26)
     # TODO: add in other distance sensors for reporting
@@ -182,8 +182,8 @@ def ScanForMarble(pipe, rob_loc, collisions_pipe):
 # Thread controlling the marble pickup
 def MarblePickup(pipe, rob_loc, collisions_pipe):
     # TODO: add driving code, can add after we've tested basic function
-    servo = AngularServo(26, min_pulse_width=0.0005, max_pulse_width=0.0025)
-    led = LED(17) # insert the actual pin for the electromagnet control
+    servo = AngularServo(25, min_pulse_width=0.0005, max_pulse_width=0.0025)
+    led = LED(21) # insert the actual pin for the electromagnet control
     # TODO: put code for activating servo to lower arm
     servo.angle = 90 # replace with actual angle
     time.sleep(1)
