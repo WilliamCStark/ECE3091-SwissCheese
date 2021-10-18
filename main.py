@@ -116,14 +116,7 @@ def DriveToBallBearing(pipe, rob_loc, ball_loc):
 
 def ScanForMarble(pipe, rob_loc, collisions_pipe):
     goals = [(0, 0, 0), (arena_dims[0], -arena_dims[1], np.pi),  (0, -arena_dims[1], np.pi/2), (arena_dims[0], 0, 3*np.pi/2)] # the locations of each corner
-    for current_corner in range(4):
-        # Navigate to the relavent corner with correct heading - NOTE may need to offset from actual corners to avoid collisions, might need to decrease angular range as well
-        goal_x, goal_y, goal_th = goals[current_corner]
-        driving_pipe_PARENT, driving_pipe_CHILD = Pipe()
-        driving_process = Process(target=DriveToGoal, args=(goal_x,goal_y,goal_th,driving_pipe_CHILD, rob_loc,collisions_pipe))
-        driving_process.start()
-        driving_pipe_CHILD.close()
-        # need to check for thread kill requests
+    def check_for_kill():
         done = False
         while driving_process.is_alive():
             if pipe.poll():
@@ -150,42 +143,40 @@ def ScanForMarble(pipe, rob_loc, collisions_pipe):
                     rob_loc = msg # this threads rob_loc needs to be updated
                 except EOFError:
                     pass
+            return done, rob_loc
+    for current_corner in range(4):
+        # Navigate to the relavent corner with correct heading - NOTE may need to offset from actual corners to avoid collisions, might need to decrease angular range as well
+        goal_x, goal_y, goal_th = goals[current_corner]
+        # need to separate goal into driving and rotation parts
+        # first do driving part
+        aligned_th = np.arctan2(rob_loc[1] - goal_y, rob_loc[0] - goal_x)
+        driving_pipe_PARENT, driving_pipe_CHILD = Pipe()
+        driving_process = Process(target=DriveToGoal, args=(goal_x,goal_y,aligned_th,driving_pipe_CHILD, rob_loc,collisions_pipe))
+        driving_process.start()
+        driving_pipe_CHILD.close()
+        # need to check for thread kill requests
+        done, rob_loc = check_for_kill()
+        if done:
+            break
+        driving_process.join()
+        # now do rotating part
+        driving_pipe_PARENT, driving_pipe_CHILD = Pipe()
+        driving_process = Process(target=DriveToGoal, args=(rob_loc[0], rob_loc[1],goal_th,driving_pipe_CHILD, rob_loc,collisions_pipe))
+        driving_process.start()
+        driving_pipe_CHILD.close()
+        # need to check for thread kill requests
+        done, rob_loc = check_for_kill()
         if done:
             break
         driving_process.join()
         # Once we've got to the corner, rotate through 90 degrees
         new_goal_th = goal_th - np.pi/2
         driving_pipe_PARENT, driving_pipe_CHILD = Pipe()
-        driving_process = Process(target=DriveToGoal, args=(goal_x,goal_y,new_goal_th,driving_pipe_CHILD, rob_loc,collisions_pipe))
+        driving_process = Process(target=DriveToGoal, args=(rob_loc[0], rob_loc[1], new_goal_th,driving_pipe_CHILD, rob_loc,collisions_pipe))
         driving_process.start()
         driving_pipe_CHILD.close()
         # need to check for thread kill requests
-        done = False
-        while driving_process.is_alive():
-            if pipe.poll():
-                msg = pipe.recv()
-                if msg == "Die":
-                    driving_pipe_PARENT.send("Die") # this will cause the robot to stop moving
-                    terminated = False
-                    while not terminated:
-                        try:
-                            driving_pipe_PARENT.recv()
-                        except ConnectionResetError:
-                            terminated = True
-                        except EOFError:
-                            terminated = True
-                    driving_process.terminate()
-                    pipe.close()
-                    done = True
-                else:
-                    driving_pipe_PARENT.send(msg)
-            elif driving_pipe_PARENT.poll():
-                try:
-                    msg = driving_pipe_PARENT.recv()
-                    pipe.send(msg) # send on up to the main thread
-                    rob_loc = msg # this threads rob_loc needs to be updated
-                except EOFError:
-                    pass
+        done, rob_loc = check_for_kill()
         if done:
             break
         driving_process.join()
