@@ -18,7 +18,11 @@ wheel_sep = 5 # chuck in actual wheel separation
 arena_dims = (100, 100) # width and height of arena in cm
 
 # Thread for driving to a goal location
-def DriveToGoal(x, y, th, pipe, rob_loc, collisions_pipe):
+def DriveToGoal(x, y, th, pipe, rob_loc, collisions_pipe, drive_to_point_mode):
+    if drive_to_point_mode:
+        alpha, beta = 1, 0
+    else:
+        alpha, beta = 0, 1
     # Create the robot at the correct location
     motor_l = Motor(gpiozero.PWMOutputDevice(pin=12,active_high=True,initial_value=0,frequency=10000), gpiozero.OutputDevice(pin=5)) # using GPIO 12 for PWM, GPIO 5 for direction
     motor_r = Motor(gpiozero.PWMOutputDevice(pin=13,active_high=True,initial_value=0,frequency=10000), gpiozero.OutputDevice(pin=6))# using GPIO 13 for PWM, GPIO 6 for direction
@@ -31,7 +35,7 @@ def DriveToGoal(x, y, th, pipe, rob_loc, collisions_pipe):
     robot.y = rob_loc[1]
     robot.th = rob_loc[2]
     # Put in code for dealing with driving to the goal with the tentacles
-    planner = TentaclePlanner(dt=dt) # uses default max_v and max_w values
+    planner = TentaclePlanner(dt=dt, alpha=alpha, beta=beta) # uses default max_v and max_w values
     dist_to_goal = np.sqrt((robot.x-x)**2 +  (robot.y-y)**2)
     angle_to_goal = abs(robot.th-th)
     last_time_printed = time.time()
@@ -123,7 +127,7 @@ def ScanForMarble(pipe, rob_loc, collisions_pipe):
         # first do driving part
         aligned_th = np.arctan2(rob_loc[1] - goal_y, rob_loc[0] - goal_x)
         driving_pipe_PARENT, driving_pipe_CHILD = Pipe()
-        driving_process = Process(target=DriveToGoal, args=(goal_x,goal_y,aligned_th,driving_pipe_CHILD, rob_loc,collisions_pipe))
+        driving_process = Process(target=DriveToGoal, args=(goal_x,goal_y,aligned_th,driving_pipe_CHILD, rob_loc,collisions_pipe, True))
         driving_process.start()
         driving_pipe_CHILD.close()
         # need to check for thread kill requests
@@ -153,13 +157,12 @@ def ScanForMarble(pipe, rob_loc, collisions_pipe):
                     rob_loc = msg # this threads rob_loc needs to be updated
                 except EOFError:
                     pass
-            return done, rob_loc
         if done:
             break
         driving_process.join()
         # now do rotating part
         driving_pipe_PARENT, driving_pipe_CHILD = Pipe()
-        driving_process = Process(target=DriveToGoal, args=(rob_loc[0], rob_loc[1],goal_th,driving_pipe_CHILD, rob_loc,collisions_pipe))
+        driving_process = Process(target=DriveToGoal, args=(rob_loc[0], rob_loc[1],goal_th,driving_pipe_CHILD, rob_loc,collisions_pipe, False))
         driving_process.start()
         driving_pipe_CHILD.close()
         # need to check for thread kill requests
@@ -189,14 +192,13 @@ def ScanForMarble(pipe, rob_loc, collisions_pipe):
                     rob_loc = msg # this threads rob_loc needs to be updated
                 except EOFError:
                     pass
-            return done, rob_loc
         if done:
             break
         driving_process.join()
         # Once we've got to the corner, rotate through 90 degrees
         new_goal_th = goal_th - np.pi/2
         driving_pipe_PARENT, driving_pipe_CHILD = Pipe()
-        driving_process = Process(target=DriveToGoal, args=(rob_loc[0], rob_loc[1], new_goal_th,driving_pipe_CHILD, rob_loc,collisions_pipe))
+        driving_process = Process(target=DriveToGoal, args=(rob_loc[0], rob_loc[1], new_goal_th,driving_pipe_CHILD, rob_loc,collisions_pipe, False))
         driving_process.start()
         driving_pipe_CHILD.close()
         # need to check for thread kill requests
@@ -226,7 +228,6 @@ def ScanForMarble(pipe, rob_loc, collisions_pipe):
                     rob_loc = msg # this threads rob_loc needs to be updated
                 except EOFError:
                     pass
-            return done, rob_loc
         if done:
             break
         driving_process.join()
