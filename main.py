@@ -137,12 +137,12 @@ def ScanForMarble(pipe, rob_loc, collisions_pipe):
                     driving_process.terminate()
                     done = True
                     pipe.close()
-                    done = True
                 else:
                     driving_pipe_PARENT.send(msg)
             elif driving_pipe_PARENT.poll():
                 msg = driving_pipe_PARENT.recv() # get the updated robot position from the drive thread
                 pipe.send(msg) # send on up to the main thread
+                rob_loc = msg # this threads rob_loc
         if done:
             break
         driving_process.join()
@@ -176,6 +176,7 @@ def ScanForMarble(pipe, rob_loc, collisions_pipe):
             elif driving_pipe_PARENT.poll():
                 msg = driving_pipe_PARENT.recv() # get the updated robot position from the drive thread
                 pipe.send(msg) # send on up to the main thread
+                rob_loc = msg # this threads rob_loc
         if done:
             break
         driving_process.join()
