@@ -248,6 +248,8 @@ class TentaclePlanner:
         self.sensor_front2_distance = 100 # in cm
         self.sensor_left_distance = 100 # in cm
         self.sensor_right_distance = 100 # in cm
+
+        self.last_time_printed = time.time()
         
         #self.obstacles = obstacles
     # Play a trajectory and evaluate where you'd end up
@@ -291,8 +293,9 @@ class TentaclePlanner:
             costs.append(self.roll_out(v,w,goal_x,goal_y,goal_th,x,y,th))
         
         best_idx = np.argmin(costs)
-
-        print("Chosen Tentacle: ",  self.tentacles[best_idx])
+        if time.time() - self.last_time_printed > 0.5:
+            print("Chosen Tentacle: ",  self.tentacles[best_idx])
+            self.last_time_printed = time.time()
         
         return self.tentacles[best_idx]
 
@@ -304,7 +307,6 @@ class TentaclePlanner:
             new_collision_data = True
             data = collisions_pipe.recv()
         if new_collision_data:
-            print(data)
             self.sensor_front1_distance = data[0]
             self.sensor_front2_distance = data[1]
             self.sensor_left_distance = data[2]

@@ -34,7 +34,11 @@ def DriveToGoal(x, y, th, pipe, rob_loc, collisions_pipe):
     planner = TentaclePlanner(dt=dt) # uses default max_v and max_w values
     dist_to_goal = np.sqrt((robot.x-x)**2 +  (robot.y-y)**2)
     angle_to_goal = abs(robot.th-th)
+    last_time_printed = time.time()
     while not (dist_to_goal < 5 and angle_to_goal < 0.05):
+        if time.time() - last_time_printed > 0.5:
+            print("goal: " , (x,y,th))
+            last_time_printed = time.time()
         planner.update_collision_data(collisions_pipe) # push new data from the collisions pipe to the planner object
         v, w = planner.plan(x,y,th,robot.x,robot.y,robot.th) # use tentacles to generate a pair of v and w values to drive at
         robot.drive(v,w) # this function sleeps for the sleeps time dt
@@ -111,7 +115,7 @@ def DriveToBallBearing(pipe, rob_loc, ball_loc):
         robot.drive(v, w) # this function sleeps for dt
 
 def ScanForMarble(pipe, rob_loc, collisions_pipe):
-    goals = [(0, 0, 0), (0, -arena_dims[1], np.pi/2), (arena_dims[0], -arena_dims[1], np.pi), (arena_dims[0], 0, 3*np.pi/2)] # the locations of each corner
+    goals = [(0, 0, 0), (arena_dims[0], -arena_dims[1], np.pi),  (0, -arena_dims[1], np.pi/2), (arena_dims[0], 0, 3*np.pi/2)] # the locations of each corner
     for current_corner in range(4):
         # Navigate to the relavent corner with correct heading - NOTE may need to offset from actual corners to avoid collisions, might need to decrease angular range as well
         goal_x, goal_y, goal_th = goals[current_corner]
@@ -140,9 +144,12 @@ def ScanForMarble(pipe, rob_loc, collisions_pipe):
                 else:
                     driving_pipe_PARENT.send(msg)
             elif driving_pipe_PARENT.poll():
-                msg = driving_pipe_PARENT.recv() # get the updated robot position from the drive thread
-                pipe.send(msg) # send on up to the main thread
-                rob_loc = msg # this threads rob_loc needs to be updated
+                try:
+                    msg = driving_pipe_PARENT.recv()
+                    pipe.send(msg) # send on up to the main thread
+                    rob_loc = msg # this threads rob_loc needs to be updated
+                except EOFError:
+                    pass
         if done:
             break
         driving_process.join()
@@ -173,9 +180,12 @@ def ScanForMarble(pipe, rob_loc, collisions_pipe):
                 else:
                     driving_pipe_PARENT.send(msg)
             elif driving_pipe_PARENT.poll():
-                msg = driving_pipe_PARENT.recv() # get the updated robot position from the drive thread
-                pipe.send(msg) # send on up to the main thread
-                rob_loc = msg # this threads rob_loc needs to be updated
+                try:
+                    msg = driving_pipe_PARENT.recv()
+                    pipe.send(msg) # send on up to the main thread
+                    rob_loc = msg # this threads rob_loc needs to be updated
+                except EOFError:
+                    pass
         if done:
             break
         driving_process.join()
