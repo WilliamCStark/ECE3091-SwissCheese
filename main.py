@@ -140,13 +140,16 @@ def ScanForMarble(pipe, rob_loc, collisions_pipe):
                     done = True
                 else:
                     driving_pipe_PARENT.send(msg)
+            elif driving_pipe_PARENT.poll():
+                msg = driving_pipe_PARENT.recv() # get the updated robot position from the drive thread
+                pipe.send(msg) # send on up to the main thread
         if done:
             break
         driving_process.join()
         # Once we've got to the corner, rotate through 90 degrees
         new_goal_th = goal_th - np.pi/2
         driving_pipe_PARENT, driving_pipe_CHILD = Pipe()
-        driving_process = Process(target=DriveToGoal, args=(goal_x,goal_y,goal_th,driving_pipe_CHILD, rob_loc,collisions_pipe))
+        driving_process = Process(target=DriveToGoal, args=(goal_x,goal_y,new_goal_th,driving_pipe_CHILD, rob_loc,collisions_pipe))
         driving_process.start()
         driving_pipe_CHILD.close()
         # need to check for thread kill requests
@@ -170,6 +173,9 @@ def ScanForMarble(pipe, rob_loc, collisions_pipe):
                     done = True
                 else:
                     driving_pipe_PARENT.send(msg)
+            elif driving_pipe_PARENT.poll():
+                msg = driving_pipe_PARENT.recv() # get the updated robot position from the drive thread
+                pipe.send(msg) # send on up to the main thread
         if done:
             break
         driving_process.join()
@@ -239,6 +245,7 @@ def main_thread():
             print("x location is: " + str(x))
             print("y location is: " + str(y))
             print("th location is: " + str(th))
+            print("State: ", (scanning, in_pickup, driving_to_marble))
             last_time_printed = time.time()
         # main thread handling code
         if driving_pipe_PARENT.poll():

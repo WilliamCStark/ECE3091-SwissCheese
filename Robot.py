@@ -304,6 +304,7 @@ class TentaclePlanner:
             new_collision_data = True
             data = collisions_pipe.recv()
         if new_collision_data:
+            print(data)
             self.sensor_front1_distance = data[0]
             self.sensor_front2_distance = data[1]
             self.sensor_left_distance = data[2]
